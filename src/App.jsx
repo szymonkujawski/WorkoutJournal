@@ -3,6 +3,8 @@ import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import Register from './components/Register';
 import Login from './components/Login';
+import WorkoutSession from './components/WorkoutSession';
+import WorkoutHistory from './components/WorkoutHistory';
 
 function App() {
   // Stan przechowujący aktualnie zalogowanego użytkownika
@@ -30,11 +32,19 @@ function App() {
       {/* Jeśli użytkownik jest ZALOGOWANY */}
       {user ? (
         <div>
-          <h2>Panel Główny</h2>
-          <p>Zalogowano jako: <strong>{user.email}</strong></p>
-          <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Wyloguj się
-          </button>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #eee' }}>
+            <p style={{ margin: 0 }}>Konto: <strong>{user.email}</strong></p>
+            <button onClick={handleLogout} style={{ padding: '5px 15px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              Wyloguj się
+            </button>
+          </header>
+          
+          {/* Wyświetlamy nasz nowy panel treningowy */}
+          <WorkoutSession />
+
+          {/* Wyświetlamy historię pod panelem */}
+         <WorkoutHistory />
+          
         </div>
       ) : (
         /* Jeśli użytkownik NIE JEST ZALOGOWANY */

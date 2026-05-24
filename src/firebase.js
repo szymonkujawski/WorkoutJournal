@@ -1,7 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-// 1. Dodajemy import modułu autoryzacji
 import { getAuth } from "firebase/auth";
+// Importujemy moduł bazy danych Firestore
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,9 +17,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// 2. Inicjalizujemy usługę Authentication i przypisujemy ją do zmiennej
+// Inicjalizujemy usługi
 const auth = getAuth(app);
+const db = getFirestore(app); // To jest brakująca baza!
 
-// 3. Eksportujemy auth, aby móc z niego korzystać w komponentach logowania i rejestracji
-export { auth };
+// Eksportujemy obie usługi, aby komponenty mogły z nich korzystać
+export { auth, db };
 export default app;
