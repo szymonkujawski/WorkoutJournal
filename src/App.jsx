@@ -28,7 +28,7 @@ function App() {
   return (
     <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
       <h1>WorkoutJournal</h1>
-      
+
       {/* Jeśli użytkownik jest ZALOGOWANY */}
       {user ? (
         <div>
@@ -39,11 +39,11 @@ function App() {
             </button>
           </header>
           
-          {/* Wyświetlamy nasz nowy panel treningowy */}
+          {/* Wyświetlamy nasz panel treningowy oparty o słownik z bazy */}
           <WorkoutSession />
 
           {/* Wyświetlamy historię pod panelem */}
-         <WorkoutHistory />
+          <WorkoutHistory />
           
         </div>
       ) : (
