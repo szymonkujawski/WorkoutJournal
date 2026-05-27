@@ -3,7 +3,6 @@ import { db, auth } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// IMPORTUJEMY NASZ NOWY KOMPONENT
 import CustomSelect from '../components/CustomSelect';
 
 export default function Exercises() {
@@ -99,19 +98,18 @@ export default function Exercises() {
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
       
-      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+      {/* DODANO: position: relative i zIndex: 10, aby lista przykrywała wykres SVG */}
+      <div style={{ position: 'relative', zIndex: 10, marginBottom: '20px', padding: '15px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
         <label style={{ display: 'block', marginBottom: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
           Wybierz ćwiczenie do analizy:
         </label>
         
-        {/* PODMIENIONY NATIVE SELECT NA CUSTOM SELECT */}
         <CustomSelect 
           value={selectedExercise}
           onChange={(val) => setSelectedExercise(val)}
           options={performedExercises}
           placeholder="-- Wybierz z wykonanych --"
         />
-
       </div>
 
       {selectedExercise && chartData.length > 0 ? (

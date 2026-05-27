@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 
+// Dodajemy import naszego autorskiego komponentu listy rozwijanej
+import CustomSelect from './CustomSelect';
+
 export default function TemplateManager({ onStartTemplate }) {
   const [templates, setTemplates] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -84,8 +87,8 @@ export default function TemplateManager({ onStartTemplate }) {
   return (
     <div style={{ marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
 
-      {/* 1. Najpierw wyświetlamy siatkę zapisanych planów */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      {/* 1. Responsywna siatka z klasą CSS zamiast stylów inline */}
+      <div className="templates-grid">
         {templates.map(t => (
           <div key={t.id} style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '130px' }}>
             <button 
@@ -136,15 +139,25 @@ export default function TemplateManager({ onStartTemplate }) {
             style={{ marginBottom: '15px' }} 
           />
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <select value={selectedCategory} onChange={e => {setSelectedCategory(e.target.value); setSelectedExercise('');}}>
-              <option value="">-- Partia --</option>
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} disabled={!selectedCategory}>
-              <option value="">-- Ćwiczenie --</option>
-              {filteredExercises.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
-            </select>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            {/* Zamieniono systemowe selecty na CustomSelect */}
+            <div style={{ flex: 1 }}>
+              <CustomSelect 
+                value={selectedCategory} 
+                onChange={val => {setSelectedCategory(val); setSelectedExercise('');}}
+                options={categories}
+                placeholder="-- Partia --"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <CustomSelect 
+                value={selectedExercise} 
+                onChange={val => setSelectedExercise(val)}
+                options={filteredExercises.map(e => e.name)}
+                placeholder="-- Ćwiczenie --"
+                disabled={!selectedCategory}
+              />
+            </div>
           </div>
           
           <button onClick={handleAddExerciseToTemplate} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--bg-surface-hover)', color: 'var(--accent-blue)', border: '1px solid var(--accent-blue)', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', cursor: 'pointer' }}>

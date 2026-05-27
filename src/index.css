@@ -119,6 +119,10 @@ button:active {
   max-height: 250px;
   overflow-y: auto;
   z-index: 9999;
+  
+  /* DODANO: Zatrzymuje scrollowanie okna, gdy scrollujemy listę na telefonie */
+  overscroll-behavior: contain;
+  
   box-shadow: 0 8px 24px rgba(0,0,0,0.6);
   list-style: none;
   margin: 0;
@@ -154,4 +158,32 @@ button:active {
   background-color: rgba(100, 181, 246, 0.15);
   color: var(--accent-blue);
   font-weight: bold;
+}
+
+/* Zabezpieczenie przed poziomym rozjeżdżaniem się aplikacji na smartfonach */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Responsywna siatka dla planów treningowych */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr); /* Telefony: zawsze 1 kolumna */
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* Tablety i duże ekrany w poziomie (od 600px) */
+@media (min-width: 600px) {
+  .templates-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Monitory i laptopy (od 900px) */
+@media (min-width: 900px) {
+  .templates-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
