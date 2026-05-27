@@ -82,22 +82,55 @@ export default function TemplateManager({ onStartTemplate }) {
   };
 
   return (
-    <div style={{ marginTop: '40px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-      <h3 style={{ textAlign: 'center', color: 'var(--text-primary)' }}>Twoje Gotowe Plany</h3>
+    <div style={{ marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
 
+      {/* 1. Najpierw wyświetlamy siatkę zapisanych planów */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+        {templates.map(t => (
+          <div key={t.id} style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '130px' }}>
+            <button 
+              onClick={() => handleDelete(t.id)} 
+              style={{ position: 'absolute', top: '8px', right: '8px', color: '#f44336', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em', zIndex: 5 }}
+              title="Usuń plan"
+            >
+              ✕
+            </button>
+            
+            <div style={{ paddingRight: '12px' }}>
+              <h4 style={{ margin: '0 0 6px 0', color: 'var(--accent-blue)', fontSize: '0.95em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</h4>
+              <div style={{ fontSize: '0.75em', color: 'var(--text-secondary)', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '10px' }}>
+                {t.exercises.map(e => e.name).join(', ')}
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => onStartTemplate(t)} 
+              style={{ width: '100%', padding: '6px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75em' }}
+            >
+              ▶ Start
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      {templates.length === 0 && !isCreating && (
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em', marginBottom: '20px' }}>Nie masz jeszcze żadnych gotowych planów.</p>
+      )}
+
+      {/* 2. Przycisk "Stwórz nowy plan" przenieśliśmy na dół */}
       {!isCreating ? (
         <button
           onClick={() => setIsCreating(true)}
-          style={{ display: 'block', margin: '0 auto 20px', padding: '12px 24px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ display: 'block', margin: '0 auto', padding: '12px 24px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
         >
           + Stwórz nowy plan
         </button>
       ) : (
-        <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
+        <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <h4 style={{ margin: '0 0 15px 0', color: 'var(--accent-blue)' }}>Kreator Planu</h4>
           <input 
             type="text" 
-            placeholder="Nazwa planu (np. Push Wtorek, FBW)" 
+            placeholder="Nazwa planu (np. Push, FBW)" 
             value={templateName} 
             onChange={e => setTemplateName(e.target.value)} 
             style={{ marginBottom: '15px' }} 
@@ -124,7 +157,7 @@ export default function TemplateManager({ onStartTemplate }) {
                 <li key={i} style={{ marginBottom: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', color: 'var(--text-primary)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{ex.name}</span>
-                    <button onClick={() => handleRemoveExerciseFromTemplate(i)} style={{ color: '#f44336', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕ Usuń</button>
+                    <button onClick={() => handleRemoveExerciseFromTemplate(i)} style={{ color: '#f44336', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
                   </div>
                 </li>
               ))}
@@ -133,41 +166,11 @@ export default function TemplateManager({ onStartTemplate }) {
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setIsCreating(false)} style={{ flex: 1, padding: '10px', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>Anuluj</button>
-            <button onClick={handleSaveTemplate} style={{ flex: 1, padding: '10px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Zapisz Plan</button>
+            <button onClick={handleSaveTemplate} style={{ flex: 1, padding: '10px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Zapisz</button>
           </div>
         </div>
       )}
 
-      {/* Wyświetlanie listy zapisanych planów */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {templates.map(t => (
-          <div key={t.id} style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', backgroundColor: 'var(--bg-surface)', position: 'relative' }}>
-            <button 
-              onClick={() => handleDelete(t.id)} 
-              style={{ position: 'absolute', top: '15px', right: '15px', color: '#f44336', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}
-              title="Usuń plan"
-            >
-              ✕
-            </button>
-            
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--accent-blue)', fontSize: '1.2em' }}>{t.name}</h4>
-            
-            <div style={{ margin: '0 0 20px 0', fontSize: '0.9em', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Kolejność:</strong> {t.exercises.map(e => e.name).join(' → ')}
-            </div>
-            
-            <button 
-              onClick={() => onStartTemplate(t)} 
-              style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em' }}
-            >
-              ▶ Rozpocznij ten trening
-            </button>
-          </div>
-        ))}
-        {templates.length === 0 && !isCreating && (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Nie masz jeszcze żadnych gotowych planów.</p>
-        )}
-      </div>
     </div>
   );
 }

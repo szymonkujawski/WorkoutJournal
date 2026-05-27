@@ -16,8 +16,7 @@ export default function Home() {
 
   return (
     <div style={{ paddingBottom: '20px' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '30px', color: 'var(--accent-blue)' }}>Strona Główna</h2>
-      
+      {/* Usunięto napis Strona Główna */}
       <WorkoutSession prefilledTemplate={activeTemplate} onWorkoutEnd={clearActiveTemplate} />
       <TemplateManager onStartTemplate={handleStartFromTemplate} />
     </div>

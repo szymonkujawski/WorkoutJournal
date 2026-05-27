@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
 
+// IMPORTUJEMY NASZ AUTORSKI KOMPONENT LISTY
+import CustomSelect from './CustomSelect';
+
 export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -188,51 +191,54 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   }
 
   return (
-    <div style={{ maxWidth: '500px', margin: '10px auto', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', textAlign: 'left', position: 'relative', backgroundColor: 'var(--bg-surface)' }}>
+    <div style={{ maxWidth: '500px', margin: '10px auto', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', textAlign: 'left', position: 'relative', backgroundColor: 'var(--bg-surface)' }}>
       
-      <div style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'var(--bg-surface-hover)', color: 'var(--accent-blue)', padding: '5px 10px', borderRadius: '20px', fontWeight: 'bold', fontSize: '1.1em', border: '1px solid var(--border-color)' }}>
+      <div style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'var(--bg-primary)', color: 'var(--accent-blue)', padding: '5px 10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1em', border: '1px solid var(--border-color)' }}>
         ⏱ {formatTime(elapsedTime)}
       </div>
 
       <h2 style={{ margin: '0 0 20px 0', color: 'var(--accent-blue)' }}>Trwa Sesja</h2>
       
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Nazwa treningu:</label>
+        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Nazwa treningu:</label>
         <input 
           type="text" 
           value={workoutName} 
           onChange={(e) => setWorkoutName(e.target.value)} 
           placeholder="np. Klatka i Biceps" 
-          /* Usunięto style inline, input czerpie z index.css! */
         />
       </div>
 
       <hr style={{ borderColor: 'var(--border-color)', borderStyle: 'solid', margin: '20px 0' }} />
 
-      <div style={{ padding: '15px', backgroundColor: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Dodaj nowe ćwiczenie:</h4>
+      <div style={{ padding: '15px', backgroundColor: 'var(--bg-primary)', borderRadius: '10px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+        <h4 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Dodaj nowe ćwiczenie:</h4>
         
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <select 
-            value={selectedCategory} 
-            onChange={(e) => { setSelectedCategory(e.target.value); setSelectedExercise(''); }}
-          >
-            <option value="">-- Partia --</option>
-            {categories.map((cat, i) => <option key={i} value={cat}>{cat}</option>)}
-          </select>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          {/* PODMIANA NA CUSTOM SELECT 1 */}
+          <div style={{ flex: 1 }}>
+            <CustomSelect 
+              value={selectedCategory} 
+              onChange={(val) => { setSelectedCategory(val); setSelectedExercise(''); }}
+              options={categories}
+              placeholder="-- Partia --"
+            />
+          </div>
 
-          <select 
-            value={selectedExercise} 
-            onChange={(e) => setSelectedExercise(e.target.value)}
-            disabled={!selectedCategory}
-          >
-            <option value="">-- Ćwiczenie --</option>
-            {filteredExercises.map((ex) => <option key={ex.id} value={ex.name}>{ex.name}</option>)}
-          </select>
+          {/* PODMIANA NA CUSTOM SELECT 2 */}
+          <div style={{ flex: 1 }}>
+            <CustomSelect 
+              value={selectedExercise} 
+              onChange={(val) => setSelectedExercise(val)}
+              options={filteredExercises.map(ex => ex.name)} // Wyciągamy same nazwy string
+              placeholder="-- Ćwiczenie --"
+              disabled={!selectedCategory}
+            />
+          </div>
         </div>
 
         {selectedExercise && (
-          <p style={{ margin: '0 0 10px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+          <p style={{ margin: '0 0 15px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
             ℹ️ {getLastPerformanceForExercise(selectedExercise)}
           </p>
         )}
@@ -240,9 +246,9 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         <button 
           type="button" 
           onClick={handleAddExerciseToSession}
-          style={{ width: '100%', padding: '10px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ width: '100%', padding: '12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--accent-blue)', border: '1px solid var(--accent-blue)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
         >
-          + Wprowadź ćwiczenie do listy sesji
+          ↓ Wprowadź ćwiczenie do listy
         </button>
       </div>
 
@@ -254,23 +260,25 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
             const currentInputs = inlineInputs[exIdx] || { weight: '', reps: '' };
             
             return (
-              <div key={exIdx} style={{ backgroundColor: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid var(--border-color)' }}>
+              <div key={exIdx} style={{ backgroundColor: 'var(--bg-primary)', padding: '15px', borderRadius: '10px', marginBottom: '15px', border: '1px solid var(--border-color)' }}>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <strong style={{ fontSize: '1.1em', color: '#ff9800' }}>{ex.name}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  {/* ZMIANA KOLORU NA NIEBIESKI */}
+                  <strong style={{ fontSize: '1.1em', color: 'var(--accent-blue)' }}>{ex.name}</strong>
                   <button type="button" onClick={() => handleDeleteExerciseFromSession(exIdx)} style={{ backgroundColor: 'transparent', border: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold' }}>✕ Usuń</button>
                 </div>
 
-                <p style={{ margin: '0 0 10px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                <p style={{ margin: '0 0 15px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                   ℹ️ {getLastPerformanceForExercise(ex.name)}
                 </p>
 
                 {ex.sets.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px', paddingLeft: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '15px', paddingLeft: '5px' }}>
                     {ex.sets.map((set, setIdx) => (
-                      <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em', color: 'var(--text-primary)' }}>
-                        <span>Seria {setIdx + 1}: <strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps} powt.</span>
-                        <button type="button" onClick={() => handleDeleteSetFromExercise(exIdx, setIdx)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8em' }}>[Usuń]</button>
+                      <div key={setIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95em', color: 'var(--text-primary)' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Seria {setIdx + 1}:</span> 
+                        <span><strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps}</span>
+                        <button type="button" onClick={() => handleDeleteSetFromExercise(exIdx, setIdx)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8em', marginLeft: 'auto' }}>[Usuń]</button>
                       </div>
                     ))}
                   </div>
@@ -292,9 +300,10 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                     value={currentInputs.reps} 
                     onChange={(e) => handleInlineInputChange(exIdx, 'reps', e.target.value)}
                   />
+                  {/* ZMIANA KOLORU NA NIEBIESKI */}
                   <button 
                     type="submit" 
-                    style={{ padding: '0 12px', backgroundColor: '#ff9800', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    style={{ padding: '0 16px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                   >
                     + Dodaj
                   </button>
@@ -308,7 +317,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
       <button 
         onClick={handleSaveWorkout} 
-        style={{ width: '100%', padding: '12px', marginTop: '20px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer' }}
+        style={{ width: '100%', padding: '14px', marginTop: '20px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1em', cursor: 'pointer' }}
       >
         Zapisz i zakończ całą sesję
       </button>

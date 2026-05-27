@@ -180,15 +180,16 @@ export default function WorkoutHistory() {
           background-color: var(--bg-surface-hover);
         }
         .highlight-workout-day {
-          background: var(--accent-green) !important;
+          background: var(--accent-blue) !important;
           color: #121212 !important;
           font-weight: bold;
           border-radius: 8px !important;
           transform: scale(0.92);
         }
         .react-calendar__tile--active {
-          background-color: var(--accent-blue) !important;
-          color: #121212 !important;
+          background-color: var(--bg-surface-hover) !important;
+          border: 1px solid var(--accent-blue) !important;
+          color: var(--accent-blue) !important;
           border-radius: 8px;
           transform: scale(0.92);
         }
@@ -207,15 +208,13 @@ export default function WorkoutHistory() {
           background-color: var(--bg-surface-hover);
         }
       `}</style>
-
-      <h3 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>Twój Dziennik Treningowy</h3>
       
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <button 
           onClick={() => setShowCalendar(!showCalendar)}
           style={{ padding: '8px 15px', backgroundColor: 'var(--bg-surface)', color: 'var(--accent-blue)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
         >
-          {showCalendar ? "Ukryj kalendarz ⬆️" : "Pokaż kalendarz aktywności 📅"}
+          {showCalendar ? "Ukryj kalendarz" : "Pokaż kalendarz aktywności"}
         </button>
       </div>
 
@@ -269,8 +268,8 @@ export default function WorkoutHistory() {
               </div>
               
               <div style={{ display: 'flex', gap: '15px', fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
-                <span>⏱️ Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
-                <span>💪 Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
+                <span>Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
+                <span>Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
               </div>
               
               {workout.exercises && workout.exercises.length > 0 ? (

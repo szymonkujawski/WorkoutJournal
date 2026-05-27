@@ -64,7 +64,6 @@ function App() {
         /* Widok DLA NIEZALOGOWANYCH dopasowany do ciemnego motywu */
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-primary)' }}>
           <h1 style={{ color: 'var(--accent-blue)' }}>WorkoutJournal</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Aplikacja do monitorowania postępów treningowych</p>
           
           {showLogin ? <Login /> : <Register />}
           

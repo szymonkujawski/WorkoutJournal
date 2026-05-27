@@ -159,7 +159,6 @@ export default function Friends() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '30px' }}>
-      <h2 style={{ textAlign: 'center', color: 'var(--accent-blue)', marginBottom: '30px' }}>Społeczność</h2>
 
       <div style={{ marginBottom: '30px' }}>
         <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', color: 'var(--text-primary)' }}>Aktualności znajomych</h4>
@@ -174,7 +173,7 @@ export default function Friends() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   
                   <Link to={`/user/${workout.userId}`} style={{ fontWeight: 'bold', color: 'var(--accent-blue)', textDecoration: 'none' }}>
-                    👤 {workout.userEmail}
+                    {workout.userEmail}
                   </Link>
                   
                   <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
@@ -182,11 +181,12 @@ export default function Friends() {
                   </span>
                 </div>
                 <h5 style={{ margin: '5px 0', fontSize: '1.1em', color: 'var(--text-primary)' }}>
-                  🏋️‍♂️ Ukończył trening: <span style={{ color: 'var(--accent-green)' }}>{workout.workoutName || 'Trening'}</span>
+                  Ukończył trening: <span style={{ color: 'var(--accent-green)' }}>{workout.workoutName || 'Trening'}</span>
                 </h5>
-                <p style={{ margin: '5px 0', fontSize: '0.85em', color: 'var(--text-secondary)' }}>
-                  ⏱ Czas trwania: <strong>{formatDuration(workout.duration)}</strong>
-                </p>
+                {/* nwm czy dac ten czas */}
+                {/* <p style={{ margin: '5px 0', fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+                  Czas trwania: <strong>{formatDuration(workout.duration)}</strong>
+                </p> */}
                 <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
                   <strong style={{ color: 'var(--text-primary)' }}>Wykonane ćwiczenia:</strong>{' '}
                   {workout.exercises ? workout.exercises.map(ex => ex.name).join(', ') : 'Brak szczegółów'}

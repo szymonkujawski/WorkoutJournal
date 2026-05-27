@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-// Importujemy komponenty z zainstalowanej biblioteki Recharts
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// IMPORTUJEMY NASZ NOWY KOMPONENT
+import CustomSelect from '../components/CustomSelect';
 
 export default function Exercises() {
   const [workouts, setWorkouts] = useState([]);
@@ -27,7 +29,6 @@ export default function Exercises() {
           fetchedWorkouts.push({ id: doc.id, ...doc.data() });
         });
 
-        // Sortujemy rosnąco po dacie
         fetchedWorkouts.sort((a, b) => {
           const dateA = a.createdAt?.seconds || 0;
           const dateB = b.createdAt?.seconds || 0;
@@ -97,19 +98,20 @@ export default function Exercises() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h2 style={{ textAlign: 'center', color: 'var(--accent-blue)' }}>Analiza Postępów</h2>
       
       <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-        <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Wybierz ćwiczenie do analizy:</label>
-        <select 
-          value={selectedExercise} 
-          onChange={(e) => setSelectedExercise(e.target.value)}
-        >
-          <option value="">-- Wybierz z wykonanych --</option>
-          {performedExercises.map((ex, idx) => (
-            <option key={idx} value={ex}>{ex}</option>
-          ))}
-        </select>
+        <label style={{ display: 'block', marginBottom: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+          Wybierz ćwiczenie do analizy:
+        </label>
+        
+        {/* PODMIENIONY NATIVE SELECT NA CUSTOM SELECT */}
+        <CustomSelect 
+          value={selectedExercise}
+          onChange={(val) => setSelectedExercise(val)}
+          options={performedExercises}
+          placeholder="-- Wybierz z wykonanych --"
+        />
+
       </div>
 
       {selectedExercise && chartData.length > 0 ? (
@@ -124,7 +126,6 @@ export default function Exercises() {
               <XAxis dataKey="date" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border-color)" />
               <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border-color)" />
               
-              {/* Tooltip w ciemnym motywie */}
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'var(--bg-surface)', 

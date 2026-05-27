@@ -116,11 +116,11 @@ export default function UserProfile() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: 'var(--text-primary)' }}>
           <span style={{ fontWeight: 'bold' }}>Przysiad (Squat)</span>
-          <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>{maxSquat} kg</span>
+          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{maxSquat} kg</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-primary)' }}>
           <span style={{ fontWeight: 'bold' }}>Martwy ciąg (Deadlift)</span>
-          <span style={{ color: '#ce93d8', fontWeight: 'bold' }}>{maxDeadlift} kg</span>
+          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{maxDeadlift} kg</span>
         </div>
       </div>
 

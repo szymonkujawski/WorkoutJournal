@@ -13,6 +13,9 @@ export default function Profile() {
   const [recentWorkouts, setRecentWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Nowy stan do kontrolowania widoczności modala wylogowania
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -89,11 +92,9 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = async () => {
-    const confirmLogout = window.confirm("Czy na pewno chcesz się wylogować?");
-    if (confirmLogout) {
-      await signOut(auth);
-    }
+  // Prawdziwa funkcja wylogowująca podpinana pod modal
+  const confirmLogout = async () => {
+    await signOut(auth);
   };
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie profilu...</p>;
@@ -157,11 +158,11 @@ export default function Profile() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: 'var(--text-primary)' }}>
           <span style={{ fontWeight: 'bold' }}>Przysiad (Squat)</span>
-          <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>{prs.squat} kg</span>
+          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{prs.squat} kg</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-primary)' }}>
           <span style={{ fontWeight: 'bold' }}>Martwy ciąg (Deadlift)</span>
-          <span style={{ color: '#ce93d8', fontWeight: 'bold' }}>{prs.deadlift} kg</span>
+          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{prs.deadlift} kg</span>
         </div>
       </div>
 
@@ -190,12 +191,27 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Przycisk aktywujący modal zamiast systemowego alertu */}
       <button 
-        onClick={handleLogout}
+        onClick={() => setShowLogoutModal(true)}
         style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: '#ff5252', border: '1px solid #ff5252', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em' }}
       >
         Wyloguj się
       </button>
+
+      {/* Nowy, spójny Modal Wylogowania */}
+      {showLogoutModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '25px', borderRadius: '12px', border: '1px solid var(--border-color)', maxWidth: '350px', width: '90%', textAlign: 'center' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Wylogowanie</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', marginBottom: '20px' }}>Czy na pewno chcesz wylogować się ze swojego konta?</p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button onClick={() => setShowLogoutModal(false)} style={{ padding: '10px 15px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>Anuluj</button>
+              <button onClick={confirmLogout} style={{ padding: '10px 15px', border: 'none', borderRadius: '8px', backgroundColor: '#ff5252', color: '#121212', fontWeight: 'bold', cursor: 'pointer' }}>Wyloguj</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

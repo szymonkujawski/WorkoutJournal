@@ -19,7 +19,8 @@ export default function Login() {
 
   return (
     <div style={{ maxWidth: '300px', margin: '0 auto', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', backgroundColor: 'var(--bg-surface)' }}>
-      <h3 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>Logowanie</h3>
+      {/* nwm czy to */}
+      {/* <h3 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>Logowanie</h3> */}
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <input 
           type="email" 
