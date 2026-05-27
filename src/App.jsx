@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Komponenty logowania
 import Register from './components/Register';
 import Login from './components/Login';
-import WorkoutSession from './components/WorkoutSession';
-import WorkoutHistory from './components/WorkoutHistory';
+
+// Nasze nowe widoki (Strony) i Nawigacja
+import BottomNav from './components/BottomNav';
+import Home from './pages/Home';
+import History from './pages/History';
+import Exercises from './pages/Exercises';
+import Friends from './pages/Friends';
+import Profile from './pages/Profile';
 
 function App() {
-  // Stan przechowujący aktualnie zalogowanego użytkownika
   const [user, setUser] = useState(null);
-  // Stan do przełączania widoku między logowaniem a rejestracją
   const [showLogin, setShowLogin] = useState(true);
 
-  // Nasłuchiwanie na zmiany stanu autoryzacji z Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -20,35 +26,39 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Funkcja wylogowywania
   const handleLogout = async () => {
     await signOut(auth);
   };
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h1>WorkoutJournal</h1>
-
-      {/* Jeśli użytkownik jest ZALOGOWANY */}
+    <div style={{ fontFamily: 'sans-serif' }}>
       {user ? (
-        <div>
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #eee' }}>
-            <p style={{ margin: 0 }}>Konto: <strong>{user.email}</strong></p>
-            <button onClick={handleLogout} style={{ padding: '5px 15px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Wyloguj się
-            </button>
+        /* Włączamy BrowserRouter dla ZALOGOWANEGO użytkownika */
+        <BrowserRouter>
+          
+          <header style={{ textAlign: 'center', padding: '15px 20px', borderBottom: '2px solid #eee', backgroundColor: '#fff' }}>
+            <h1 style={{ fontSize: '1.4em', margin: 0, color: '#2196F3' }}>WorkoutJournal</h1>
           </header>
           
-          {/* Wyświetlamy nasz panel treningowy oparty o słownik z bazy */}
-          <WorkoutSession />
+          {/* Główny kontener na treść strony - dodajemy dolny margines, żeby menu nie zasłaniało tekstu */}
+          <main style={{ padding: '20px', paddingBottom: '80px' }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/exercises" element={<Exercises />} />
+              <Route path="/friends" element={<Friends />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </main>
 
-          {/* Wyświetlamy historię pod panelem */}
-          <WorkoutHistory />
-          
-        </div>
+          {/* Renderujemy nasze menu dolne */}
+          <BottomNav />
+
+        </BrowserRouter>
       ) : (
-        /* Jeśli użytkownik NIE JEST ZALOGOWANY */
-        <div>
+        /* Widok DLA NIEZALOGOWANYCH */
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1>WorkoutJournal</h1>
           <p>Aplikacja do monitorowania postępów treningowych</p>
           
           {showLogin ? <Login /> : <Register />}
