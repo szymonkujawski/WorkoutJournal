@@ -1,5 +1,6 @@
+import UserProfile from './pages/UserProfile';
 import { useState, useEffect } from 'react';
-import { auth } from './firebase';
+import { auth } from './firebase'; 
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
@@ -20,6 +21,7 @@ function App() {
   const [showLogin, setShowLogin] = useState(true);
 
   useEffect(() => {
+    // Nasłuchujemy tylko tego, czy ktoś jest zalogowany czy nie
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
@@ -48,6 +50,7 @@ function App() {
               <Route path="/exercises" element={<Exercises />} />
               <Route path="/friends" element={<Friends />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/user/:id" element={<UserProfile />} /> {/* <-- NOWA TRASA */}
             </Routes>
           </main>
 
