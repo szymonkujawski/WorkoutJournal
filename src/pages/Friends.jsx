@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, or, orderBy, limit } from 'firebase/firestore';
-import { Link } from 'react-router-dom'; // Dodajemy Link do nawigacji
+import { Link } from 'react-router-dom'; 
 
 export default function Friends() {
   const [searchEmail, setSearchEmail] = useState('');
@@ -15,7 +15,6 @@ export default function Friends() {
   
   const currentUser = auth.currentUser;
 
-  // --- 1. NASŁUCHIWANIE NA ZAPROSZENIA I ZNAJOMOŚCI ---
   useEffect(() => {
     if (!currentUser) return;
 
@@ -59,7 +58,6 @@ export default function Friends() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // --- 2. POBIERANIE TRENINGÓW ZNAJOMYCH (FEED) ---
   useEffect(() => {
     if (friendsList.length === 0) {
       setFriendsWorkouts([]);
@@ -73,7 +71,7 @@ export default function Friends() {
       collection(db, 'workouts'),
       where('userId', 'in', friendsIds),
       orderBy('createdAt', 'desc'),
-      limit(5) // Ograniczenie do 5 najnowszych treningów
+      limit(5)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -91,7 +89,6 @@ export default function Friends() {
     return () => unsubscribe();
   }, [friendsList]);
 
-  // --- 3. WYSZUKIWARKA UŻYTKOWNIKÓW ---
   const handleSearch = async () => {
     if (!searchEmail) return;
     if (searchEmail.toLowerCase() === currentUser.email.toLowerCase()) {
@@ -119,7 +116,6 @@ export default function Friends() {
     }
   };
 
-  // --- 4. WYSYŁANIE ZAPROSZENIA ---
   const handleSendRequest = async () => {
     if (!searchResult) return;
     
@@ -146,7 +142,6 @@ export default function Friends() {
     }
   };
 
-  // --- 5. AKCEPTACJA ZAPROSZENIA ---
   const handleAcceptRequest = async (relationshipId) => {
     try {
       const relRef = doc(db, 'friendships', relationshipId);
@@ -164,38 +159,36 @@ export default function Friends() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '30px' }}>
-      <h2 style={{ textAlign: 'center', color: '#2196F3', marginBottom: '30px' }}>Społeczność</h2>
+      <h2 style={{ textAlign: 'center', color: 'var(--accent-blue)', marginBottom: '30px' }}>Społeczność</h2>
 
-      {/* --- SEKCJA 1: TABLICA AKTYWNOŚCI ZNAJOMYCH (FEED) --- */}
       <div style={{ marginBottom: '30px' }}>
-        <h4 style={{ borderBottom: '2px solid #eee', paddingBottom: '5px', color: '#2196F3' }}>Aktualności znajomych</h4>
+        <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', color: 'var(--text-primary)' }}>Aktualności znajomych</h4>
         {loadingFeed ? (
-          <p style={{ textAlign: 'center', color: '#777' }}>Aktualizowanie tablicy...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Aktualizowanie tablicy...</p>
         ) : friendsWorkouts.length === 0 ? (
-          <p style={{ color: '#777', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>Brak ostatniej aktywności znajomych.</p>
+          <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>Brak ostatniej aktywności znajomych.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
             {friendsWorkouts.map(workout => (
-              <div key={workout.id} style={{ padding: '15px', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+              <div key={workout.id} style={{ padding: '15px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   
-                  {/* Klikalna nazwa/mail na tablicy */}
-                  <Link to={`/user/${workout.userId}`} style={{ fontWeight: 'bold', color: '#1976d2', textDecoration: 'none' }}>
+                  <Link to={`/user/${workout.userId}`} style={{ fontWeight: 'bold', color: 'var(--accent-blue)', textDecoration: 'none' }}>
                     👤 {workout.userEmail}
                   </Link>
                   
-                  <span style={{ fontSize: '0.8em', color: '#999' }}>
+                  <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                     {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : 'Niedawno'}
                   </span>
                 </div>
-                <h5 style={{ margin: '5px 0', fontSize: '1.1em', color: '#333' }}>
-                  🏋️‍♂️ Ukończył trening: <span style={{ color: '#4CAF50' }}>{workout.workoutName || 'Trening'}</span>
+                <h5 style={{ margin: '5px 0', fontSize: '1.1em', color: 'var(--text-primary)' }}>
+                  🏋️‍♂️ Ukończył trening: <span style={{ color: 'var(--accent-green)' }}>{workout.workoutName || 'Trening'}</span>
                 </h5>
-                <p style={{ margin: '5px 0', fontSize: '0.85em', color: '#666' }}>
+                <p style={{ margin: '5px 0', fontSize: '0.85em', color: 'var(--text-secondary)' }}>
                   ⏱ Czas trwania: <strong>{formatDuration(workout.duration)}</strong>
                 </p>
-                <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: '#f9f9f9', borderRadius: '6px', fontSize: '0.9em', color: '#555' }}>
-                  <strong>Wykonane ćwiczenia:</strong>{' '}
+                <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>Wykonane ćwiczenia:</strong>{' '}
                   {workout.exercises ? workout.exercises.map(ex => ex.name).join(', ') : 'Brak szczegółów'}
                 </div>
               </div>
@@ -204,20 +197,18 @@ export default function Friends() {
         )}
       </div>
 
-      {/* --- SEKCJA 2: MOI ZNAJOMI --- */}
       <div style={{ marginBottom: '30px' }}>
-        <h4 style={{ borderBottom: '2px solid #eee', paddingBottom: '5px' }}>Moi znajomi ({friendsList.length})</h4>
+        <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', color: 'var(--text-primary)' }}>Moi znajomi ({friendsList.length})</h4>
         {friendsList.length === 0 ? (
-          <p style={{ color: '#777', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>Nie masz jeszcze żadnych znajomych.</p>
+          <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>Nie masz jeszcze żadnych znajomych.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
             {friendsList.map(friend => (
-              <div key={friend.id} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: '#4CAF50', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '12px' }}>
+              <div key={friend.id} style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', color: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '12px' }}>
                   {friend.otherUserEmail.charAt(0).toUpperCase()}
                 </div>
-                {/* Klikalna nazwa znajomego na liście */}
-                <Link to={`/user/${friend.otherUserId}`} style={{ fontWeight: 'bold', color: '#333', textDecoration: 'none' }}>
+                <Link to={`/user/${friend.otherUserId}`} style={{ fontWeight: 'bold', color: 'var(--text-primary)', textDecoration: 'none' }}>
                   {friend.otherUserEmail}
                 </Link>
               </div>
@@ -226,40 +217,38 @@ export default function Friends() {
         )}
       </div>
 
-      {/* --- SEKCJA 3: OCZEKUJĄCE ZAPROSZENIA --- */}
       {pendingRequests.length > 0 && (
         <div style={{ marginBottom: '30px' }}>
-          <h4 style={{ borderBottom: '2px solid #eee', paddingBottom: '5px', color: '#f57c00' }}>Oczekujące zaproszenia</h4>
+          <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', color: '#ffb74d' }}>Oczekujące zaproszenia</h4>
           {pendingRequests.map(req => (
-            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff3e0', padding: '12px 15px', borderRadius: '6px', marginBottom: '10px', border: '1px solid #ffe0b2' }}>
-              <span>Zaproszenie od: <strong>{req.otherUserEmail}</strong></span>
-              <button onClick={() => handleAcceptRequest(req.id)} style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Akceptuj</button>
+            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface-hover)', padding: '12px 15px', borderRadius: '6px', marginBottom: '10px', border: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Od: <strong>{req.otherUserEmail}</strong></span>
+              <button onClick={() => handleAcceptRequest(req.id)} style={{ backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Akceptuj</button>
             </div>
           ))}
         </div>
       )}
 
-      {/* --- SEKCJA 4: WYSZUKIWARKA (TERAZ NA SAMYM DOLE) --- */}
-      <div style={{ backgroundColor: '#f9f9f9', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-        <h4 style={{ margin: '0 0 15px 0' }}>Znajdź znajomego</h4>
+      <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <h4 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Znajdź znajomego</h4>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input 
             type="email" 
             placeholder="Wpisz dokładny adres e-mail" 
             value={searchEmail}
             onChange={(e) => setSearchEmail(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+            style={{ flex: 1 }}
           />
-          <button onClick={handleSearch} style={{ padding: '10px 20px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Szukaj</button>
+          <button onClick={handleSearch} style={{ padding: '10px 20px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Szukaj</button>
         </div>
-        {searchMessage && <p style={{ color: '#777', fontSize: '0.9em', marginTop: '10px' }}>{searchMessage}</p>}
+        {searchMessage && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9em', marginTop: '10px' }}>{searchMessage}</p>}
         {searchResult && (
-          <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ marginTop: '15px', padding: '15px', backgroundColor: 'var(--bg-surface-hover)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
             <div>
-              <strong style={{ display: 'block', color: '#1976d2' }}>{searchResult.displayName}</strong>
-              <span style={{ fontSize: '0.85em', color: '#555' }}>{searchResult.email}</span>
+              <strong style={{ display: 'block', color: 'var(--accent-blue)' }}>{searchResult.displayName}</strong>
+              <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>{searchResult.email}</span>
             </div>
-            <button onClick={handleSendRequest} style={{ backgroundColor: '#4CAF50', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+ Zaproś</button>
+            <button onClick={handleSendRequest} style={{ backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>+ Zaproś</button>
           </div>
         )}
       </div>

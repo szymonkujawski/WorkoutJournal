@@ -21,7 +21,6 @@ function App() {
   const [showLogin, setShowLogin] = useState(true);
 
   useEffect(() => {
-    // Nasłuchujemy tylko tego, czy ktoś jest zalogowany czy nie
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
@@ -33,16 +32,20 @@ function App() {
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
+    <div>
       {user ? (
-        /* Włączamy BrowserRouter dla ZALOGOWANEGO użytkownika */
         <BrowserRouter>
           
-          <header style={{ textAlign: 'center', padding: '15px 20px', borderBottom: '2px solid #eee', backgroundColor: '#fff' }}>
-            <h1 style={{ fontSize: '1.4em', margin: 0, color: '#2196F3' }}>WorkoutJournal</h1>
+          {/* Ciemny nagłówek ze zmiennymi CSS */}
+          <header style={{ 
+            textAlign: 'center', 
+            padding: '15px 20px', 
+            borderBottom: '1px solid var(--border-color)', 
+            backgroundColor: 'var(--bg-surface)' 
+          }}>
+            <h1 style={{ fontSize: '1.4em', margin: 0, color: 'var(--accent-blue)' }}>WorkoutJournal</h1>
           </header>
           
-          {/* Główny kontener na treść strony - dodajemy dolny margines, żeby menu nie zasłaniało tekstu */}
           <main style={{ padding: '20px', paddingBottom: '80px' }}>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -50,25 +53,32 @@ function App() {
               <Route path="/exercises" element={<Exercises />} />
               <Route path="/friends" element={<Friends />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/user/:id" element={<UserProfile />} /> {/* <-- NOWA TRASA */}
+              <Route path="/user/:id" element={<UserProfile />} />
             </Routes>
           </main>
 
-          {/* Renderujemy nasze menu dolne */}
           <BottomNav />
 
         </BrowserRouter>
       ) : (
-        /* Widok DLA NIEZALOGOWANYCH */
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <h1>WorkoutJournal</h1>
-          <p>Aplikacja do monitorowania postępów treningowych</p>
+        /* Widok DLA NIEZALOGOWANYCH dopasowany do ciemnego motywu */
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-primary)' }}>
+          <h1 style={{ color: 'var(--accent-blue)' }}>WorkoutJournal</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Aplikacja do monitorowania postępów treningowych</p>
           
           {showLogin ? <Login /> : <Register />}
           
           <button 
             onClick={() => setShowLogin(!showLogin)} 
-            style={{ marginTop: '20px', background: 'none', border: 'none', color: '#555', textDecoration: 'underline', cursor: 'pointer' }}
+            style={{ 
+              marginTop: '20px', 
+              background: 'none', 
+              border: 'none', 
+              color: 'var(--accent-blue)', 
+              textDecoration: 'underline', 
+              cursor: 'pointer',
+              fontSize: '1em'
+            }}
           >
             {showLogin ? "Nie masz konta? Zarejestruj się" : "Masz już konto? Zaloguj się"}
           </button>
