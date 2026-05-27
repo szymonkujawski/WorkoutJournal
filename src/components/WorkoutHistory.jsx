@@ -6,7 +6,6 @@ export default function WorkoutHistory() {
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Stany do obsługi autorskiego pop-upa
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState(null);
 
@@ -40,31 +39,56 @@ export default function WorkoutHistory() {
     return () => unsubscribe();
   }, []);
 
-  // Otwarcie pop-upa i zapamiętanie, który trening chcemy usunąć
+  // --- FUNKCJA POMOCNICZA: Formatowanie sekund z bazy na tekst (np. 15 min 23 sek) ---
+  const formatDuration = (totalSeconds) => {
+    if (!totalSeconds) return 'Brak danych';
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes === 0) return `${seconds} sek`;
+    return `${minutes} min ${seconds} sek`;
+  };
+
+  // --- FUNKCJA POMOCNICZA: Obliczanie łącznego tonażu (objętości) treningu ---
+  const calculateTotalVolume = (workout) => {
+    let totalVolume = 0;
+    
+    if (workout.exercises) {
+      workout.exercises.forEach(ex => {
+        ex.sets?.forEach(set => {
+          totalVolume += (set.weight * set.reps); // Ciężar x Powtórzenia
+        });
+      });
+    } else if (workout.sets) { // Kompatybilność wsteczna
+      workout.sets.forEach(set => {
+        totalVolume += (set.weight * set.reps);
+      });
+    }
+    
+    return totalVolume.toLocaleString('pl-PL'); // Ładne formatowanie liczby, np. 2 500 zamiast 2500
+  };
+
   const openDeleteModal = (workoutId) => {
     setIdToDelete(workoutId);
     setIsModalOpen(true);
   };
 
-  // Zamknięcie pop-upa bez usuwania
   const closeDeleteModal = () => {
     setIsModalOpen(false);
     setIdToDelete(null);
   };
 
-  // Potwierdzenie usunięcia z poziomu pop-upa
   const handleConfirmDelete = async () => {
     if (!idToDelete) return;
     try {
       const workoutDocRef = doc(db, 'workouts', idToDelete);
       await deleteDoc(workoutDocRef);
-      closeDeleteModal(); // zamykamy okienko po sukcesie
+      closeDeleteModal();
     } catch (error) {
       alert("Błąd podczas usuwania: " + error.message);
     }
   };
 
-  if (loading) return <p style={{ textAlign: 'center' }}>Ładowanie historii treningów...</p>;
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '20px' }}>Ładowanie historii treningów...</p>;
 
   return (
     <div style={{ maxWidth: '500px', margin: '20px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', textAlign: 'left', position: 'relative' }}>
@@ -77,33 +101,28 @@ export default function WorkoutHistory() {
           {workouts.map((workout) => (
             <div key={workout.id} style={{ padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '6px', borderLeft: '5px solid #2196F3', position: 'relative' }}>
               
-              {/* Przycisk otwierający nasz pop-up */}
               <button 
                 onClick={() => openDeleteModal(workout.id)}
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#f44336',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '0.9em'
-                }}
+                style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: 'transparent', border: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em' }}
                 title="Usuń trening"
               >
                 ✕ Usuń
               </button>
 
               {/* Nagłówek treningu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '5px', paddingRight: '60px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', borderBottom: '1px solid #ddd', paddingBottom: '5px', paddingRight: '60px' }}>
                 <strong style={{ fontSize: '1.2em', color: '#333' }}>
                   {workout.workoutName || 'Trening'}
                 </strong>
                 <span style={{ fontSize: '0.85em', color: '#777', alignSelf: 'center' }}>
                   {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : 'Przed chwilą'}
                 </span>
+              </div>
+              
+              {/* --- NOWA SEKCJA: Podsumowanie czasu i objętości (tonażu) --- */}
+              <div style={{ display: 'flex', gap: '15px', fontSize: '0.85em', color: '#555', marginBottom: '12px', fontStyle: 'italic' }}>
+                <span>⏱️ Czas: <strong>{formatDuration(workout.duration)}</strong></span>
+                <span>💪 Łączny ciężar: <strong>{calculateTotalVolume(workout)} kg</strong></span>
               </div>
               
               {/* Wyświetlanie ćwiczeń */}
@@ -142,45 +161,15 @@ export default function WorkoutHistory() {
         </div>
       )}
 
-      {/* --- AUTORSKI POP-UP MODAL --- */}
+      {/* Pop-up potwierdzenia usunięcia */}
       {isModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', // Przyciemnienie tła strony
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000 // Pewność, że modal będzie na samej górze
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '25px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-            maxWidth: '350px',
-            width: '90%',
-            textAlign: 'center'
-          }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', maxWidth: '350px', width: '90%', textAlign: 'center' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>Potwierdź usunięcie</h4>
             <p style={{ color: '#666', fontSize: '0.95em', marginBottom: '20px' }}>Czy na pewno chcesz bezpowrotnie usunąć ten trening z historii?</p>
-            
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button 
-                onClick={closeDeleteModal}
-                style={{ padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: '#fff', cursor: 'pointer' }}
-              >
-                Anuluj
-              </button>
-              <button 
-                onClick={handleConfirmDelete}
-                style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', backgroundColor: '#f44336', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Tak, usuń
-              </button>
+              <button onClick={closeDeleteModal} style={{ padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: '#fff', cursor: 'pointer' }}>Anuluj</button>
+              <button onClick={handleConfirmDelete} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', backgroundColor: '#f44336', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Tak, usuń</button>
             </div>
           </div>
         </div>
