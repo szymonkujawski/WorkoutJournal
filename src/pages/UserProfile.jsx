@@ -79,37 +79,56 @@ export default function UserProfile() {
   });
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', paddingBottom: '40px' }}>
+    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}>
       
+      {/* SEKCJA GŁÓWNA PROFILU */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        
+        {/* Awatar spójny z Twoim własnym profilem */}
         <div style={{ 
-          width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', 
+          width: '90px', height: '90px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', 
           color: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-          fontSize: '2em', margin: '0 auto 10px auto', fontWeight: 'bold' 
+          fontSize: '2.5em', margin: '0 auto 15px auto', fontWeight: 'bold', overflow: 'hidden',
+          border: '3px solid var(--bg-surface)'
         }}>
-          {profile.email?.charAt(0).toUpperCase()}
+          {profile.photoURL ? (
+            <img src={profile.photoURL} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            (profile.username || profile.displayName || profile.email || 'U').charAt(0).toUpperCase()
+          )}
         </div>
-        <h3 style={{ margin: '5px 0', color: 'var(--text-primary)' }}>{profile.displayName || profile.email}</h3>
+        
+        {/* Nazwa użytkownika, e-mail i bio */}
         <div style={{ marginTop: '5px' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9em', margin: '0 0 5px 0', fontStyle: 'italic' }}>
+          <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)', fontSize: '1.6em' }}>
+            {profile.username || profile.displayName || 'Użytkownik bez nazwy'}
+          </h2>
+          
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85em', margin: '0 0 10px 0' }}>
+            {profile.email}
+          </p>
+
+          <p style={{ color: 'var(--text-primary)', fontSize: '0.95em', margin: '0 0 10px 0', fontStyle: 'italic' }}>
             {profile.bio || 'Zaczynam przygodę ze sportem 🚀'}
           </p>
         </div>
       </div>
 
+      {/* STATYSTYKI */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
-        <div style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+        <div style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '15px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: 'var(--accent-blue)' }}>{totalWorkouts}</div>
           <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>Wszystkie treningi</div>
         </div>
-        <div style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '15px', borderRadius: '8px', textAlign: 'center' }}>
+        <div style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '15px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: 'var(--accent-green)' }}>{workoutsLast30Days}</div>
           <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>Ostatnie 30 dni</div>
         </div>
       </div>
 
+      {/* REKORDY */}
       <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '15px', color: 'var(--text-primary)' }}>Rekordy (Trójbój)</h4>
-      <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '15px', marginBottom: '30px' }}>
+      <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '15px', marginBottom: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: 'var(--text-primary)' }}>
           <span style={{ fontWeight: 'bold' }}>Wyciskanie (Bench)</span>
           <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{maxBench} kg</span>
@@ -124,13 +143,14 @@ export default function UserProfile() {
         </div>
       </div>
 
+      {/* OSTATNIE SESJE */}
       <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '15px', color: 'var(--text-primary)' }}>Ostatnie sesje</h4>
       {userWorkouts.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Brak historii treningowej.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' }}>
           {userWorkouts.map((workout) => (
-            <div key={workout.id} style={{ padding: '10px 15px', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid var(--accent-blue)', borderRadius: '4px' }}>
+            <div key={workout.id} style={{ padding: '10px 15px', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid var(--accent-blue)', borderRadius: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                 <strong style={{ fontSize: '1em', color: 'var(--text-primary)' }}>{workout.workoutName || 'Trening'}</strong>
                 <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
@@ -149,9 +169,10 @@ export default function UserProfile() {
         </div>
       )}
 
+      {/* PRZYCISK POWROTU */}
       <button 
         onClick={() => navigate(-1)} 
-        style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em' }}
+        style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em' }}
       >
         ← Powrót do społeczności
       </button>
