@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function CustomSelect({ value, onChange, options, placeholder, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
+  const selectRef = useRef(null);
 
-  // Zamykanie listy po kliknięciu gdziekolwiek indziej na stronie
+  // Funkcja zamykająca listę, gdy klikniemy gdziekolwiek indziej na ekranie
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
@@ -15,57 +15,50 @@ export default function CustomSelect({ value, onChange, options, placeholder, di
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (optionValue) => {
-    onChange(optionValue);
-    setIsOpen(false);
-  };
-
   return (
-    <div 
-      className="custom-select-container" 
-      ref={containerRef} 
-      style={{ 
-        opacity: disabled ? 0.5 : 1, 
-        pointerEvents: disabled ? 'none' : 'auto' 
-      }}
-    >
+    <div className="custom-select-container" ref={selectRef}>
+      
+      {/* Przycisk główny z Placeholderem */}
       <div 
-        className={`custom-select-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        className={`custom-select-trigger ${isOpen ? 'open' : ''}`} 
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        style={{ 
+          opacity: disabled ? 0.5 : 1, 
+          cursor: disabled ? 'not-allowed' : 'pointer' 
+        }}
       >
         <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
           {value || placeholder}
         </span>
         
-        {/* Obracająca się strzałka SVG */}
-        <span style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', display: 'flex' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </span>
+        {/* Strzałka, która płynnie obraca się przy otwieraniu */}
+        <svg 
+          width="16" height="16" viewBox="0 0 24 24" fill="none" 
+          stroke="var(--accent-blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
       </div>
 
-      {isOpen && (
+      {/* Rozwijana lista (tylko konkretne opcje, brak placeholdera!) */}
+      {isOpen && !disabled && (
         <ul className="custom-select-dropdown">
-          <li 
-            className="custom-select-option"
-            onClick={() => handleSelect('')}
-            style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}
-          >
-            {placeholder}
-          </li>
-          
-          {options.map((opt, idx) => (
+          {options.map((opt, index) => (
             <li 
-              key={idx}
+              key={index} 
               className={`custom-select-option ${value === opt ? 'selected' : ''}`}
-              onClick={() => handleSelect(opt)}
+              onClick={() => {
+                onChange(opt);
+                setIsOpen(false); // Zamyka listę po wyborze
+              }}
             >
               {opt}
             </li>
           ))}
         </ul>
       )}
+      
     </div>
   );
 }

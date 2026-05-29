@@ -21,11 +21,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- NOWOCZESNE, MINIMALISTYCZNE INPUTY I SELECTY --- */
-input, select {
+/* --- NOWOCZESNE, MINIMALISTYCZNE INPUTY --- */
+input {
   appearance: none;
   -webkit-appearance: none;
-  /* Zamiast sztywnego koloru, używamy 5% bieli, co daje efekt głębi na ciemnym tle */
   background-color: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -39,32 +38,16 @@ input, select {
 }
 
 /* Subtelne rozjaśnienie przy najechaniu palcem/myszką */
-input:hover, select:hover {
+input:hover {
   background-color: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Miękka, niebieska poświata przy aktywnym polu (focus) */
-input:focus, select:focus {
+input:focus {
   background-color: rgba(255, 255, 255, 0.08);
   border-color: var(--accent-blue);
   box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.25);
-}
-
-/* Smukła, minimalistyczna strzałka w kolorze akcentu */
-select {
-  cursor: pointer;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364b5f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px;
-}
-
-/* Delikatne ostylowanie natywnych opcji na komputerach */
-option {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  padding: 10px;
 }
 
 /* Przyciski */
@@ -107,7 +90,7 @@ button:active {
   box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.25);
 }
 
-/* Rozwijane menu */
+/* Rozwijane menu - z wewnętrznym, eleganckim scrollowaniem */
 .custom-select-dropdown {
   position: absolute;
   top: calc(100% + 8px);
@@ -116,13 +99,15 @@ button:active {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  max-height: 250px;
-  overflow-y: auto;
-  z-index: 9999;
   
-  /* DODANO: Zatrzymuje scrollowanie okna, gdy scrollujemy listę na telefonie */
+  /* Limit wysokości i wewnętrzny scroll */
+  max-height: 300px;
+  overflow-y: auto;
+  
+  /* Zatrzymuje scrollowanie okna, gdy scrollujemy listę na telefonie/komputerze */
   overscroll-behavior: contain;
   
+  z-index: 9999;
   box-shadow: 0 8px 24px rgba(0,0,0,0.6);
   list-style: none;
   margin: 0;
@@ -186,4 +171,48 @@ html, body {
   .templates-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* --- NOWOCZESNE, CIEMNE PASKI PRZEWIJANIA (SCROLLBARY) --- */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* Chrome, Edge, Safari, Opera */
+::-webkit-scrollbar {
+  width: 8px; /* Cienki pasek dla całej strony */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary); 
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color); 
+  border-radius: 10px; /* Zaokrąglone krawędzie suwaka */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary); /* Lekkie rozjaśnienie przy najechaniu myszką */
+}
+
+/* Jeszcze cieńszy i bardziej dyskretny pasek dla naszej rozwijanej listy */
+.custom-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.custom-select-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15); 
+}
+
+.custom-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }

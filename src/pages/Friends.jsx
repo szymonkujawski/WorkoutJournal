@@ -65,13 +65,13 @@ export default function Friends() {
     }
 
     setLoadingFeed(true);
-    const friendsIds = friendsList.map(f => f.otherUserId);
+    // Firebase przyjmuje w zapytaniu 'in' maksymalnie 10 elementów. Zabezpieczamy się przed błędem.
+    const friendsIds = friendsList.map(f => f.otherUserId).slice(0, 10);
 
+    // USUNIĘTO limit() i orderBy() - dzięki temu zapytanie zadziała natychmiast bez tworzenia indeksów w Firebase!
     const q = query(
       collection(db, 'workouts'),
-      where('userId', 'in', friendsIds),
-      orderBy('createdAt', 'desc'),
-      limit(5)
+      where('userId', 'in', friendsIds)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -79,7 +79,16 @@ export default function Friends() {
       snapshot.forEach(doc => {
         workoutsFeed.push({ id: doc.id, ...doc.data() });
       });
-      setFriendsWorkouts(workoutsFeed);
+
+      // Sortujemy tablicę lokalnie w JavaScript (od najnowszych)
+      workoutsFeed.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
+
+      // Obcinamy listę do 5 najnowszych wpisów, żeby nie zaśmiecać widoku
+      setFriendsWorkouts(workoutsFeed.slice(0, 5));
       setLoadingFeed(false);
     }, (error) => {
       console.error("Błąd pobierania tablicy aktywności:", error);

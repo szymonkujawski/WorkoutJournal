@@ -239,7 +239,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
         {selectedExercise && (
           <p style={{ margin: '0 0 15px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-            ℹ️ {getLastPerformanceForExercise(selectedExercise)}
+             {getLastPerformanceForExercise(selectedExercise)}
           </p>
         )}
 
@@ -269,7 +269,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                 </div>
 
                 <p style={{ margin: '0 0 15px 0', fontSize: '0.85em', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                  ℹ️ {getLastPerformanceForExercise(ex.name)}
+                   {getLastPerformanceForExercise(ex.name)}
                 </p>
 
                 {ex.sets.length > 0 && (
