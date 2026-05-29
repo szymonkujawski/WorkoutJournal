@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -8,11 +9,11 @@ import 'react-calendar/dist/Calendar.css';
 export default function WorkoutHistory() {
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const navigate = useNavigate();
+
+  // Stany dla kalendarza
   const [workoutDates, setWorkoutDates] = useState(new Set());
   const [showCalendar, setShowCalendar] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [idToDelete, setIdToDelete] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
 
   useEffect(() => {
@@ -25,12 +26,13 @@ export default function WorkoutHistory() {
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const workoutsArray = [];
-      const datesSet = new Set(); 
+      const datesSet = new Set();
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         workoutsArray.push({ id: doc.id, ...data });
 
+        // Dodawanie dat do kalendarza
         if (data.createdAt) {
           const d = data.createdAt.toDate();
           const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -38,6 +40,7 @@ export default function WorkoutHistory() {
         }
       });
 
+      // Sortowanie chronologiczne od najnowszych
       workoutsArray.sort((a, b) => {
         const dateA = a.createdAt?.seconds || 0;
         const dateB = b.createdAt?.seconds || 0;
@@ -79,6 +82,21 @@ export default function WorkoutHistory() {
     return totalVolume.toLocaleString('pl-PL');
   };
 
+  const handleDeleteWorkout = async (e, workoutId) => {
+    e.preventDefault();
+    e.stopPropagation(); // Blokuje otwarcie szczegółów sesji podczas usuwania
+    
+    const confirmDelete = window.confirm("Czy na pewno chcesz usunąć ten trening z historii?");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(doc(db, 'workouts', workoutId));
+    } catch (error) {
+      alert("Błąd podczas usuwania: " + error.message);
+    }
+  };
+
+  // --- LOGIKA KALENDARZA ---
   const tileClassName = ({ date, view }) => {
     if (view === 'month') {
       const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -105,39 +123,19 @@ export default function WorkoutHistory() {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setHighlightedId(targetWorkout.id);
-          setTimeout(() => setHighlightedId(null), 2000);
+          setTimeout(() => setHighlightedId(null), 2000); // Miganie kafelka po kliknięciu
         }
       }
     }
   };
 
-  const openDeleteModal = (workoutId) => {
-    setIdToDelete(workoutId);
-    setIsModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setIsModalOpen(false);
-    setIdToDelete(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!idToDelete) return;
-    try {
-      const workoutDocRef = doc(db, 'workouts', idToDelete);
-      await deleteDoc(workoutDocRef);
-      closeDeleteModal();
-    } catch (error) {
-      alert("Błąd podczas usuwania: " + error.message);
-    }
-  };
-
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie historii treningów...</p>;
+  if (workouts.length === 0) return <p style={{ textAlign: 'center', marginTop: '30px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Brak zapisanych treningów w historii.</p>;
 
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'left', position: 'relative' }}>
+    <div style={{ maxWidth: '500px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left', position: 'relative' }}>
       
-      {/* CSS Kalendarza pod Ciemny Motyw */}
+      {/* --- STYL KALENDARZA --- */}
       <style>{`
         .react-calendar {
           border: 1px solid var(--border-color);
@@ -209,7 +207,8 @@ export default function WorkoutHistory() {
         }
       `}</style>
       
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+      {/* Przycisk Pokaż/Ukryj Kalendarz */}
+      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
         <button 
           onClick={() => setShowCalendar(!showCalendar)}
           style={{ padding: '8px 15px', backgroundColor: 'var(--bg-surface)', color: 'var(--accent-blue)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -229,97 +228,85 @@ export default function WorkoutHistory() {
       )}
 
       {/* --- LISTA TRENINGÓW --- */}
-      {workouts.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Brak zapisanych treningów. Czas na pierwszą sesję!</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {workouts.map((workout) => (
-            <div 
-              key={workout.id} 
-              id={`workout-${workout.id}`} 
-              style={{ 
-                padding: '15px', 
-                borderRadius: '12px', 
-                position: 'relative',
-                transition: 'all 0.5s ease', 
-                backgroundColor: highlightedId === workout.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)', 
-                borderLeft: highlightedId === workout.id ? '5px solid var(--accent-green)' : '5px solid var(--accent-blue)',
-                borderTop: '1px solid var(--border-color)',
-                borderRight: '1px solid var(--border-color)',
-                borderBottom: '1px solid var(--border-color)',
-                transform: highlightedId === workout.id ? 'scale(1.02)' : 'scale(1)'
-              }}
-            >  
-              <button 
-                onClick={() => openDeleteModal(workout.id)}
-                style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'transparent', border: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9em' }}
-                title="Usuń trening"
-              >
-                ✕ Usuń
-              </button>
+      {workouts.map((workout) => (
+        <div 
+          key={workout.id} 
+          id={`workout-${workout.id}`}
+          onClick={() => navigate(`/workout/${workout.id}`)}
+          style={{ 
+            padding: '18px', 
+            borderRadius: '12px', 
+            backgroundColor: highlightedId === workout.id ? 'var(--bg-surface-hover)' : 'var(--bg-surface)', 
+            border: '1px solid var(--border-color)',
+            borderLeft: highlightedId === workout.id ? '5px solid var(--accent-green)' : '5px solid var(--accent-blue)',
+            position: 'relative',
+            transition: 'all 0.3s ease', 
+            cursor: 'pointer',
+            transform: highlightedId === workout.id ? 'scale(1.02)' : 'scale(1)'
+          }}
+          onMouseEnter={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)' }}
+          onMouseLeave={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface)' }}
+        >  
+          {/* Przycisk Usuń */}
+          <button 
+            onClick={(e) => handleDeleteWorkout(e, workout.id)}
+            style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'transparent', border: 'none', color: 'rgba(244, 67, 54, 0.6)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em', transition: 'color 0.2s' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#f44336'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(244, 67, 54, 0.6)'}
+          >
+            ✕ Usuń
+          </button>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', paddingRight: '60px' }}>
-                <strong style={{ fontSize: '1.2em', color: 'var(--text-primary)' }}>
-                  {workout.workoutName || 'Trening'}
-                </strong>
-                <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)', alignSelf: 'center' }}>
-                  {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : 'Przed chwilą'}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '15px', fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
-                <span>Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
-                <span>Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
-              </div>
-              
-              {workout.exercises && workout.exercises.length > 0 ? (
-                workout.exercises.map((ex, exIdx) => (
-                  <div key={exIdx} style={{ marginBottom: '12px', paddingLeft: '5px' }}>
-                    <span style={{ fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
-                      {ex.name}
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '15px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
-                      {ex.sets?.map((set, setIdx) => (
-                        <div key={setIdx}>
-                          Seria {setIdx + 1}: <strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps} powt.
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ paddingLeft: '5px' }}>
-                  <span style={{ fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
-                    {workout.exerciseName}
-                  </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '15px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
-                    {workout.sets?.map((set, setIdx) => (
-                      <div key={setIdx}>
-                        Seria {setIdx + 1}: <strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps} powt.
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pop-up potwierdzenia usunięcia z ciemnym motywem */}
-      {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '25px', borderRadius: '12px', border: '1px solid var(--border-color)', maxWidth: '350px', width: '90%', textAlign: 'center' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Potwierdź usunięcie</h4>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', marginBottom: '20px' }}>Czy na pewno chcesz bezpowrotnie usunąć ten trening z historii?</p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button onClick={closeDeleteModal} style={{ padding: '10px 15px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>Anuluj</button>
-              <button onClick={handleConfirmDelete} style={{ padding: '10px 15px', border: 'none', borderRadius: '8px', backgroundColor: '#f44336', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Tak, usuń</button>
-            </div>
+          {/* Nagłówek: Nazwa treningu i Data */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', paddingRight: '65px' }}>
+            <strong style={{ fontSize: '1.2em', color: 'var(--accent-blue)' }}>
+              {workout.workoutName || 'Trening'}
+            </strong>
+            <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)', alignSelf: 'center' }}>
+              {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Niedawno'}
+            </span>
           </div>
+          
+          {/* Czas i Objętość */}
+          <div style={{ display: 'flex', gap: '15px', fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '15px', fontStyle: 'italic' }}>
+            <span>Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
+            <span>Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
+          </div>
+          
+          {/* Rozpiska Ćwiczeń oraz dokładnych serii/kilogramów */}
+          {workout.exercises && workout.exercises.length > 0 ? (
+            workout.exercises.map((ex, exIdx) => (
+              <div key={exIdx} style={{ marginBottom: '12px', paddingLeft: '2px' }}>
+                <span style={{ fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                  {ex.name}
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '15px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
+                  {ex.sets?.map((set, setIdx) => (
+                    <div key={setIdx}>
+                      Seria {setIdx + 1}: <strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps} powt.
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ paddingLeft: '2px' }}>
+              <span style={{ fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                {workout.exerciseName}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '15px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
+                {workout.sets?.map((set, setIdx) => (
+                  <div key={setIdx}>
+                    Seria {setIdx + 1}: <strong style={{ color: 'var(--accent-blue)' }}>{set.weight} kg</strong> x {set.reps} powt.
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
-      )}
+      ))}
+      
     </div>
   );
 }

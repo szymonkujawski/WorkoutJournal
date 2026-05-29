@@ -262,7 +262,30 @@ export default function Friends() {
                   <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
                     <strong style={{ color: 'var(--text-primary)' }}>Wykonane ćwiczenia:</strong>{' '}
                     {workout.exercises ? workout.exercises.map(ex => ex.name).join(', ') : 'Brak szczegółów'}
+                    {/* NOWY PRZYCISK: Przejście do szczegółów sesji i komentarzy */}
+                <Link 
+                  to={`/workout/${workout.id}`} 
+                  style={{ 
+                    display: 'block', 
+                    textAlign: 'center', 
+                    marginTop: '12px', 
+                    padding: '10px', 
+                    backgroundColor: 'rgba(100, 181, 246, 0.1)', 
+                    border: '1px solid var(--accent-blue)', 
+                    borderRadius: '8px', 
+                    textDecoration: 'none', 
+                    color: 'var(--accent-blue)', 
+                    fontWeight: 'bold',
+                    fontSize: '0.9em',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(100, 181, 246, 0.2)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(100, 181, 246, 0.1)'}
+                >
+                  Zobacz szczegóły
+                </Link>
                   </div>
+                  
                 </div>
               );
             })}

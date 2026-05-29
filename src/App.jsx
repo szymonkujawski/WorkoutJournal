@@ -4,6 +4,7 @@ import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
+import WorkoutDetails from './pages/WorkoutDetails';
 // Komponenty logowania
 import Register from './components/Register';
 import Login from './components/Login';
@@ -54,6 +55,7 @@ function App() {
               <Route path="/friends" element={<Friends />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/user/:id" element={<UserProfile />} />
+              <Route path="/workout/:id" element={<WorkoutDetails />} />
             </Routes>
           </main>
 

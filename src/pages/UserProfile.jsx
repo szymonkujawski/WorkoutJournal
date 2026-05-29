@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
@@ -81,10 +81,17 @@ export default function UserProfile() {
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}>
       
+      {/* PRZYCISK POWROTU NA GÓRZE */}
+      <button 
+        onClick={() => navigate(-1)} 
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', fontWeight: 'bold', marginBottom: '20px', padding: 0, fontSize: '1em' }}
+      >
+        ← Powrót
+      </button>
+      
       {/* SEKCJA GŁÓWNA PROFILU */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         
-        {/* Awatar spójny z Twoim własnym profilem */}
         <div style={{ 
           width: '90px', height: '90px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', 
           color: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', 
@@ -98,7 +105,6 @@ export default function UserProfile() {
           )}
         </div>
         
-        {/* Nazwa użytkownika, e-mail i bio */}
         <div style={{ marginTop: '5px' }}>
           <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)', fontSize: '1.6em' }}>
             {profile.username || profile.displayName || 'Użytkownik bez nazwy'}
@@ -150,32 +156,41 @@ export default function UserProfile() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' }}>
           {userWorkouts.map((workout) => (
-            <div key={workout.id} style={{ padding: '10px 15px', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid var(--accent-blue)', borderRadius: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <strong style={{ fontSize: '1em', color: 'var(--text-primary)' }}>{workout.workoutName || 'Trening'}</strong>
-                <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-                  {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : 'Niedawno'}
-                </span>
+            <Link 
+              key={workout.id} 
+              to={`/workout/${workout.id}`} 
+              style={{ textDecoration: 'none', display: 'block' }}
+            >
+              <div 
+                style={{ 
+                  padding: '10px 15px', 
+                  backgroundColor: 'var(--bg-surface)', 
+                  borderLeft: '4px solid var(--accent-blue)', 
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface)'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <strong style={{ fontSize: '1em', color: 'var(--text-primary)' }}>{workout.workoutName || 'Trening'}</strong>
+                  <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
+                    {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : 'Niedawno'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+                  {workout.exercises ? (
+                    workout.exercises.map(ex => ex.name).join(', ')
+                  ) : (
+                    workout.exerciseName || 'Brak wpisanych ćwiczeń'
+                  )}
+                </div>
               </div>
-              <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
-                {workout.exercises ? (
-                  workout.exercises.map(ex => ex.name).join(', ')
-                ) : (
-                  workout.exerciseName || 'Brak wpisanych ćwiczeń'
-                )}
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
-
-      {/* PRZYCISK POWROTU */}
-      <button 
-        onClick={() => navigate(-1)} 
-        style={{ width: '100%', padding: '15px', backgroundColor: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em' }}
-      >
-        ← Powrót do społeczności
-      </button>
 
     </div>
   );
