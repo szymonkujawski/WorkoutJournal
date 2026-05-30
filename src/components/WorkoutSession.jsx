@@ -17,14 +17,14 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   const [historyWorkouts, setHistoryWorkouts] = useState([]); 
 
   const [selectedCategory, setSelectedCategory] = useState(''); 
-  const [selectedExercise, setSelectedExercise] = useState(''); 
-  
   const [exercises, setExercises] = useState([]);
   
   const [showAddExerciseBox, setShowAddExerciseBox] = useState(false);
+  
+  // NOWOŚĆ: Stan dla widoku szczegółów ćwiczenia podczas dodawania
+  const [viewingDetails, setViewingDetails] = useState(null);
 
   const [showCongratsModal, setShowCongratsModal] = useState(false);
-  // NOWOŚĆ: Stan dla ładnego modala anulowania
   const [showCancelModal, setShowCancelModal] = useState(false);
   
   const [workoutSummary, setWorkoutSummary] = useState({ duration: 0, volume: 0, totalWorkouts: 0, exerciseCount: 0, prCount: 0 });
@@ -167,27 +167,24 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setIsWorkoutActive(true);
   };
 
-  const handleAddExerciseToSession = () => {
-    if (!selectedExercise) {
-      alert('Wybierz ćwiczenie z listy!');
-      return;
-    }
+  // ZMIANA: Funkcja przyjmuje teraz nazwę ćwiczenia jako argument
+  const handleAddExerciseToSession = (exerciseName) => {
     setExercises([
       ...exercises, 
       { 
-        name: selectedExercise, 
+        name: exerciseName, 
         sets: [{ weight: '', reps: '', completed: false }] 
       }
     ]);
-    setSelectedExercise('');
     setShowAddExerciseBox(false); 
+    setSelectedCategory('');
+    setViewingDetails(null);
   };
 
   const handleDeleteExerciseFromSession = (indexToDelete) => {
     setExercises(exercises.filter((_, index) => index !== indexToDelete));
   };
 
-  // NOWOŚĆ: Prawdziwa logika anulowania treningu podpięta pod przycisk w modalu
   const confirmCancelWorkout = () => {
     localStorage.removeItem('active_workout_state');
     setIsWorkoutActive(false);
@@ -195,10 +192,11 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setStartTime(null);
     setWorkoutName('');
     setSelectedCategory('');
-    setSelectedExercise('');
     setExercises([]);
     setMessage('');
     setShowCancelModal(false);
+    setViewingDetails(null);
+    setShowAddExerciseBox(false);
     if (onWorkoutEnd) onWorkoutEnd(); 
   };
 
@@ -287,8 +285,9 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setStartTime(null);
     setWorkoutName('');
     setSelectedCategory('');
-    setSelectedExercise('');
     setExercises([]);
+    setViewingDetails(null);
+    setShowAddExerciseBox(false);
     
     const fetchData = async () => {
       const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
@@ -305,10 +304,10 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
   if (!isWorkoutActive) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '40px' }}>
+      <div style={{ textAlign: 'center', marginTop: '15px' }}>
         <button 
           onClick={handleStartEmptyWorkout}
-          style={{ padding: '20px 40px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '12px', fontSize: '1.2em', fontWeight: 'bold', cursor: 'pointer' }}
+          style={{ width: '100%', padding: '20px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '12px', fontSize: '1.2em', fontWeight: 'bold', cursor: 'pointer' }}
         >
           + Rozpocznij pusty trening
         </button>
@@ -460,47 +459,127 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </div>
       )}
 
+      {/* NOWOŚĆ: Sekcja dodawania ćwiczenia w stylu z TemplateManager */}
       {showAddExerciseBox ? (
         <div style={{ padding: '15px', backgroundColor: 'var(--bg-primary)', borderRadius: '10px', border: '1px dashed var(--accent-blue)', marginBottom: '20px' }}>
-          <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)', textAlign: 'center' }}>Wybierz ćwiczenie</h4>
           
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <div style={{ flex: 1 }}>
+          {/* Widok szczegółów ćwiczenia */}
+          {viewingDetails ? (
+            <div>
+              <button 
+                onClick={() => setViewingDetails(null)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--accent-blue)',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  marginBottom: '15px',
+                  padding: 0,
+                  fontSize: '0.95em'
+                }}
+              >
+                ← Powrót
+              </button>
+
+              <div style={{ backgroundColor: 'var(--bg-surface)', padding: '15px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.7em', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }}>
+                  {viewingDetails.category}
+                </span>
+                <h3 style={{ margin: '4px 0 15px 0', color: 'var(--text-primary)', fontSize: '1.3em' }}>
+                  {viewingDetails.name}
+                </h3>
+
+                <div style={{ 
+                  width: '100%', 
+                  height: '180px', 
+                  backgroundColor: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '8px', 
+                  overflow: 'hidden', 
+                  marginBottom: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}>
+                  {viewingDetails.imageUrl ? (
+                    <img src={viewingDetails.imageUrl} alt={viewingDetails.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      <p style={{ margin: 0, fontSize: '0.8em' }}>Brak grafiki</p>
+                    </div>
+                  )}
+                </div>
+
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85em', lineHeight: '1.5', margin: 0 }}>
+                  {viewingDetails.description || 'Pamiętaj o pełnym zakresie ruchu i bezpiecznej technice wykonania ćwiczenia.'}
+                </p>
+
+                <button 
+                  onClick={() => handleAddExerciseToSession(viewingDetails.name)} 
+                  style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' }}
+                >
+                  + Dodaj do sesji
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Widok listy ćwiczeń */
+            <div>
+              <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)', textAlign: 'center' }}>Wybierz ćwiczenie</h4>
+              
               <CustomSelect 
                 value={selectedCategory} 
-                onChange={(val) => { setSelectedCategory(val); setSelectedExercise(''); }}
+                onChange={(val) => setSelectedCategory(val)}
                 options={categories}
-                placeholder="-- Partia --"
+                placeholder="Wybierz partię"
               />
-            </div>
-            <div style={{ flex: 1 }}>
-              <CustomSelect 
-                value={selectedExercise} 
-                onChange={(val) => setSelectedExercise(val)}
-                options={filteredExercises.map(ex => ex.name)} 
-                placeholder="-- Ćwiczenie --"
-                disabled={!selectedCategory}
-              />
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              type="button" 
-              onClick={() => setShowAddExerciseBox(false)}
-              style={{ flex: 1, padding: '10px', backgroundColor: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Anuluj
-            </button>
-            <button 
-              type="button" 
-              onClick={handleAddExerciseToSession}
-              disabled={!selectedExercise}
-              style={{ flex: 1, padding: '10px', backgroundColor: selectedExercise ? 'var(--accent-blue)' : 'var(--border-color)', color: '#121212', border: 'none', borderRadius: '8px', cursor: selectedExercise ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
-            >
-              + Dodaj do planu
-            </button>
-          </div>
+              {selectedCategory && (
+                <div style={{ marginTop: '15px', maxHeight: '220px', overflowY: 'auto', paddingRight: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {filteredExercises.map(ex => (
+                    <div key={ex.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <span style={{ color: 'var(--text-primary)', fontSize: '0.9em', fontWeight: '500' }}>
+                        {ex.name}
+                      </span>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <button 
+                          onClick={() => setViewingDetails(ex)}
+                          title="Szczegóły ćwiczenia"
+                          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                          </svg>
+                        </button>
+                        
+                        <button 
+                          onClick={() => handleAddExerciseToSession(ex.name)} 
+                          style={{ backgroundColor: 'rgba(100, 181, 246, 0.1)', color: 'var(--accent-blue)', border: '1px solid var(--accent-blue)', borderRadius: '6px', padding: '6px 10px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Dodaj
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button 
+                type="button" 
+                onClick={() => { setShowAddExerciseBox(false); setSelectedCategory(''); }}
+                style={{ width: '100%', marginTop: '15px', padding: '10px', backgroundColor: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Anuluj
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <button 
@@ -520,7 +599,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         Zakończ trening
       </button>
 
-      {/* Przycisk aktywujący ładnego modala anulowania */}
+      {/* Przycisk aktywujący modala anulowania */}
       <button 
         onClick={() => setShowCancelModal(true)} 
         style={{ width: '100%', padding: '14px', backgroundColor: 'transparent', color: '#f44336', border: '1px solid #f44336', borderRadius: '8px', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer' }}
@@ -582,12 +661,11 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </div>
       )}
 
-      {/* NOWOŚĆ: MODAL POTWIERDZENIA ANULOWANIA */}
+      {/* MODAL POTWIERDZENIA ANULOWANIA */}
       {showCancelModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: 'var(--bg-surface)', padding: '30px 25px', borderRadius: '16px', border: '2px solid #f44336', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(244, 67, 54, 0.2)' }}>
             
-            {/* <div style={{ fontSize: '3.5em', marginBottom: '15px' }}></div> */}
             
             <h2 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Przerwać trening?</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', margin: '0 0 25px 0', lineHeight: '1.5' }}>

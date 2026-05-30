@@ -6,7 +6,9 @@ import { motion } from 'framer-motion';
 
 export default function Exercises() {
   const [workouts, setWorkouts] = useState([]);
-  const [performedExercises, setPerformedExercises] = useState([]); 
+  
+  // ZMIANA: Zamiast "performedExercises" trzymamy wszystkie ćwiczenia z bazy
+  const [allExercises, setAllExercises] = useState([]); 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [fullExerciseDict, setFullExerciseDict] = useState({}); 
   
@@ -23,19 +25,38 @@ export default function Exercises() {
       if (!auth.currentUser) return;
 
       try {
+        // 1. Pobieramy wszystkie ćwiczenia z bazy
         const dictSnap = await getDocs(collection(db, 'exercises_dict'));
         const dictMap = {};
+        const exercisesList = [];
+        const cats = new Set();
+
         dictSnap.forEach(doc => {
           const data = doc.data();
-          dictMap[data.name] = {
+          const exObj = {
             name: data.name,
             category: data.category,
             description: data.description || '',
             imageUrl: data.imageUrl || ''
           };
+          dictMap[data.name] = exObj;
+          exercisesList.push(exObj);
+          cats.add(data.category); // Zbieramy wszystkie unikalne kategorie z bazy
         });
-        setFullExerciseDict(dictMap);
 
+        // Sortujemy ćwiczenia i kategorie alfabetycznie
+        exercisesList.sort((a, b) => a.name.localeCompare(b.name));
+        const sortedCategories = Array.from(cats).sort();
+
+        setFullExerciseDict(dictMap);
+        setAllExercises(exercisesList);
+        setAvailableCategories(sortedCategories);
+        
+        if (sortedCategories.length > 0) {
+          setSelectedCategory(sortedCategories[0]);
+        }
+
+        // 2. Pobieramy historię treningów użytkownika (tylko na potrzeby wykresów)
         const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
         const querySnapshot = await getDocs(q);
         const fetchedWorkouts = [];
@@ -51,35 +72,6 @@ export default function Exercises() {
         });
 
         setWorkouts(fetchedWorkouts);
-
-        const uniqueNames = new Set();
-        fetchedWorkouts.forEach(w => {
-          if (w.exercises) {
-            w.exercises.forEach(ex => uniqueNames.add(ex.name));
-          } else if (w.exerciseName) { 
-            uniqueNames.add(w.exerciseName);
-          }
-        });
-
-        const performed = [];
-        const cats = new Set();
-        
-        uniqueNames.forEach(name => {
-          const matchedDict = dictMap[name];
-          const cat = matchedDict ? matchedDict.category : 'Inne';
-          performed.push({ name, category: cat });
-          cats.add(cat);
-        });
-
-        performed.sort((a, b) => a.name.localeCompare(b.name));
-        const sortedCategories = Array.from(cats).sort();
-
-        setPerformedExercises(performed);
-        setAvailableCategories(sortedCategories);
-        
-        if (sortedCategories.length > 0) {
-          setSelectedCategory(sortedCategories[0]);
-        }
         
         setLoading(false);
       } catch (error) {
@@ -91,17 +83,19 @@ export default function Exercises() {
     fetchData();
   }, []);
 
+  // Aktualizacja wybranego ćwiczenia przy zmianie kategorii
   useEffect(() => {
     if (selectedCategory) {
-      const exercisesInCategory = performedExercises.filter(e => e.category === selectedCategory);
+      const exercisesInCategory = allExercises.filter(e => e.category === selectedCategory);
       if (exercisesInCategory.length > 0) {
         setSelectedExercise(exercisesInCategory[0].name);
       } else {
         setSelectedExercise('');
       }
     }
-  }, [selectedCategory, performedExercises]);
+  }, [selectedCategory, allExercises]);
 
+  // Generowanie danych do wykresu dla wybranego ćwiczenia
   useEffect(() => {
     if (!selectedExercise) {
       setChartData([]);
@@ -149,8 +143,9 @@ export default function Exercises() {
     setViewingDetails(exerciseInfo);
   };
 
-  if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie danych analitycznych...</p>;
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie bazy ćwiczeń...</p>;
 
+  // --- WIDOK 2: SZCZEGÓŁY ĆWICZENIA (Encyklopedia) ---
   if (viewingDetails) {
     return (
       <motion.div 
@@ -176,7 +171,7 @@ export default function Exercises() {
             fontSize: '1em'
           }}
         >
-          ← Powrót do analizy postępów
+          ← Powrót do listy ćwiczeń
         </button>
 
         <div style={{ backgroundColor: 'var(--bg-surface)', padding: '25px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -229,7 +224,8 @@ export default function Exercises() {
     );
   }
 
-  const exercisesToDisplay = performedExercises.filter(ex => ex.category === selectedCategory);
+  // --- WIDOK 1: STANDARDOWY PANEL (Kafelki + Wykres) ---
+  const exercisesToDisplay = allExercises.filter(ex => ex.category === selectedCategory);
 
   return (
     <motion.div 
@@ -239,7 +235,7 @@ export default function Exercises() {
       transition={{ duration: 0.2 }}
       style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}
     >
-      <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Analiza postępów</h3>
+      <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Atlas ćwiczeń i statystyki</h3>
 
       {availableCategories.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px' }}>
@@ -341,9 +337,10 @@ export default function Exercises() {
           )}
         </div>
       ) : (
-        <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Nie masz jeszcze żadnych zapisanych ćwiczeń w historii.</p>
+        <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center' }}>Brak ćwiczeń w bazie danych.</p>
       )}
 
+      {/* Sekcja Wykresu */}
       {selectedExercise && chartData.length > 0 ? (
         <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px 10px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>
@@ -351,7 +348,7 @@ export default function Exercises() {
           </h4>
           
           <div style={{ height: '280px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer key={selectedExercise} width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
                 <XAxis dataKey="date" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border-color)" />
@@ -382,7 +379,12 @@ export default function Exercises() {
           </div>
         </div>
       ) : selectedExercise ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '30px' }}>Brak wystarczających danych do narysowania wykresu dla tego ćwiczenia.</p>
+        <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            Jeszcze nie wykonywałeś/aś ćwiczenia: <strong style={{color: 'var(--text-primary)'}}>{selectedExercise}</strong>. <br />
+            Wykonaj je podczas treningu, aby zobaczyć tutaj swój wykres postępów!
+          </p>
+        </div>
       ) : null}
       
     </motion.div>
