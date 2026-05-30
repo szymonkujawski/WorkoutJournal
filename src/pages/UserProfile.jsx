@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { motion } from 'framer-motion';
 
 export default function UserProfile() {
   const { id } = useParams();
@@ -79,7 +80,13 @@ export default function UserProfile() {
   });
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}>
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}
+      style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}
+    >
       
       {/* PRZYCISK POWROTU NA GÓRZE */}
       <button 
@@ -192,6 +199,6 @@ export default function UserProfile() {
         </div>
       )}
 
-    </div>
+    </motion.div>
   );
 }

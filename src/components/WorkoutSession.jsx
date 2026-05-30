@@ -24,7 +24,10 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   const [showAddExerciseBox, setShowAddExerciseBox] = useState(false);
 
   const [showCongratsModal, setShowCongratsModal] = useState(false);
-  const [workoutSummary, setWorkoutSummary] = useState({ duration: 0, volume: 0, totalWorkouts: 0, exerciseCount: 0 });
+  // NOWOŚĆ: Stan dla ładnego modala anulowania
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  
+  const [workoutSummary, setWorkoutSummary] = useState({ duration: 0, volume: 0, totalWorkouts: 0, exerciseCount: 0, prCount: 0 });
 
   useEffect(() => {
     const savedState = localStorage.getItem('active_workout_state');
@@ -90,13 +93,13 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
   useEffect(() => {
     let interval;
-    if (isWorkoutActive && startTime && !showCongratsModal) {
+    if (isWorkoutActive && startTime && !showCongratsModal && !showCancelModal) {
       interval = setInterval(() => {
         setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isWorkoutActive, startTime, showCongratsModal]);
+  }, [isWorkoutActive, startTime, showCongratsModal, showCancelModal]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -184,21 +187,19 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setExercises(exercises.filter((_, index) => index !== indexToDelete));
   };
 
-  // NOWOŚĆ: Funkcja anulowania sesji
-  const handleCancelWorkout = () => {
-    const confirmCancel = window.confirm("Czy na pewno chcesz anulować trening? Niezapisane postępy zostaną trwale utracone.");
-    if (confirmCancel) {
-      localStorage.removeItem('active_workout_state');
-      setIsWorkoutActive(false);
-      setElapsedTime(0);
-      setStartTime(null);
-      setWorkoutName('');
-      setSelectedCategory('');
-      setSelectedExercise('');
-      setExercises([]);
-      setMessage('');
-      if (onWorkoutEnd) onWorkoutEnd(); 
-    }
+  // NOWOŚĆ: Prawdziwa logika anulowania treningu podpięta pod przycisk w modalu
+  const confirmCancelWorkout = () => {
+    localStorage.removeItem('active_workout_state');
+    setIsWorkoutActive(false);
+    setElapsedTime(0);
+    setStartTime(null);
+    setWorkoutName('');
+    setSelectedCategory('');
+    setSelectedExercise('');
+    setExercises([]);
+    setMessage('');
+    setShowCancelModal(false);
+    if (onWorkoutEnd) onWorkoutEnd(); 
   };
 
   const handleSaveWorkout = async () => {
@@ -220,6 +221,30 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       return;
     }
 
+    const historicalMaxes = {};
+    historyWorkouts.forEach(workout => {
+      if (workout.exercises) {
+        workout.exercises.forEach(ex => {
+          if (ex.sets) {
+            const maxWeight = Math.max(...ex.sets.map(s => Number(s.weight) || 0));
+            if (!historicalMaxes[ex.name] || maxWeight > historicalMaxes[ex.name]) {
+              historicalMaxes[ex.name] = maxWeight;
+            }
+          }
+        });
+      }
+    });
+
+    let prCount = 0;
+    cleanedExercises.forEach(ex => {
+      const currentMax = Math.max(...ex.sets.map(s => s.weight));
+      const pastMax = historicalMaxes[ex.name] || 0;
+      
+      if (currentMax > 0 && currentMax > pastMax) {
+        prCount++;
+      }
+    });
+
     try {
       await addDoc(collection(db, 'workouts'), {
         userId: auth.currentUser.uid,
@@ -227,6 +252,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         workoutName: workoutName || 'Pusty Trening',
         exercises: cleanedExercises,
         duration: elapsedTime, 
+        prCount: prCount, 
         createdAt: serverTimestamp()
       });
 
@@ -241,7 +267,8 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         duration: elapsedTime,
         volume: totalVolume.toLocaleString('pl-PL'),
         totalWorkouts: historyWorkouts.length + 1,
-        exerciseCount: cleanedExercises.length
+        exerciseCount: cleanedExercises.length,
+        prCount: prCount 
       });
 
       localStorage.removeItem('active_workout_state');
@@ -330,7 +357,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                   <strong style={{ fontSize: '1.15em', color: 'var(--accent-blue)' }}>{ex.name}</strong>
-                  {/* ZMIANA: Zamiast "⋮" jest czytelny "✕" */}
                   <button type="button" onClick={() => handleDeleteExerciseFromSession(exIdx)} style={{ backgroundColor: 'transparent', border: 'none', color: '#f44336', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em' }} title="Usuń ćwiczenie">✕</button>
                 </div>
                 
@@ -486,17 +512,17 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </button>
       )}
 
-      {/* ZIELONY PRZYCISK ZAPISU */}
+      {/* NIEBIESKI PRZYCISK ZAPISU */}
       <button 
         onClick={handleSaveWorkout} 
-        style={{ width: '100%', padding: '16px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer', marginBottom: '10px' }}
+        style={{ width: '100%', padding: '16px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer', marginBottom: '10px' }}
       >
         Zakończ trening
       </button>
 
-      {/* NOWOŚĆ: CZERWONY PRZYCISK ANULOWANIA SESJI */}
+      {/* Przycisk aktywujący ładnego modala anulowania */}
       <button 
-        onClick={handleCancelWorkout} 
+        onClick={() => setShowCancelModal(true)} 
         style={{ width: '100%', padding: '14px', backgroundColor: 'transparent', color: '#f44336', border: '1px solid #f44336', borderRadius: '8px', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer' }}
       >
         Anuluj sesję
@@ -504,6 +530,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
       {message && <p style={{ textAlign: 'center', marginTop: '15px', fontWeight: 'bold', color: '#f44336' }}>{message}</p>}
 
+      {/* MODAL Z PODSUMOWANIEM */}
       {showCongratsModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: 'var(--bg-surface)', padding: '35px 25px', borderRadius: '16px', border: '2px solid var(--accent-green)', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(76, 175, 80, 0.2)' }}>
@@ -518,19 +545,28 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
             <div style={{ backgroundColor: 'var(--bg-primary)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '25px', textAlign: 'left' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>⏱ Czas:</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Czas:</span>
                 <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{formatTime(workoutSummary.duration)}</strong>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>🏋️ Objętość:</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Objętość:</span>
                 <strong style={{ color: 'var(--accent-green)', fontSize: '1.1em' }}>{workoutSummary.volume} kg</strong>
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>📝 Ćwiczenia:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: workoutSummary.prCount > 0 ? '10px' : '0' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Ćwiczenia:</span>
                 <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{workoutSummary.exerciseCount}</strong>
               </div>
+
+              {workoutSummary.prCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Nowe Rekordy (PR):</span>
+                  <strong style={{ color: '#FFD700', fontSize: '1.2em', textShadow: '0 0 8px rgba(255, 215, 0, 0.4)' }}>
+                    🏆 {workoutSummary.prCount}
+                  </strong>
+                </div>
+              )}
 
             </div>
 
@@ -542,6 +578,36 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
             >
               Zamknij podsumowanie
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* NOWOŚĆ: MODAL POTWIERDZENIA ANULOWANIA */}
+      {showCancelModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '30px 25px', borderRadius: '16px', border: '2px solid #f44336', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(244, 67, 54, 0.2)' }}>
+            
+            {/* <div style={{ fontSize: '3.5em', marginBottom: '15px' }}></div> */}
+            
+            <h2 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Przerwać trening?</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', margin: '0 0 25px 0', lineHeight: '1.5' }}>
+              Czy na pewno chcesz anulować obecną sesję? Wszystkie niezapisane postępy z tego treningu zostaną <strong style={{color: '#f44336'}}>trwale utracone</strong>.
+            </p>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setShowCancelModal(false)} 
+                style={{ flex: 1, padding: '12px', border: '1px solid var(--border-color)', borderRadius: '10px', backgroundColor: 'transparent', color: 'var(--text-primary)', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Wróć
+              </button>
+              <button 
+                onClick={confirmCancelWorkout} 
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#f44336', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Tak, anuluj
+              </button>
+            </div>
           </div>
         </div>
       )}

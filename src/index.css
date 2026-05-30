@@ -12,6 +12,16 @@
   --border-color: #333333;
 }
 
+:root[data-theme="light"] {
+  --bg-primary: #f5f7fa;        /* Jasne, lekko szare tło */
+  --bg-surface: #ffffff;        /* Czysto białe kafelki */
+  --text-primary: #121212;      /* Ciemny tekst */
+  --text-secondary: #666666;    /* Szary tekst poboczny */
+  --border-color: #e0e0e0;      /* Jasne obramowania */
+  --accent-blue: #1976d2;       /* Nieco ciemniejszy niebieski dla lepszego kontrastu na białym */
+  --accent-green: #2e7d32;      /* Ciemniejszy zielony */
+}
+
 /* Reset tła całej aplikacji */
 body {
   margin: 0;

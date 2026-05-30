@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth } from '../firebase';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { motion } from 'framer-motion';
 
 export default function WorkoutDetails() {
   const { id } = useParams();
@@ -18,7 +19,6 @@ export default function WorkoutDetails() {
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Pobieranie danych treningu i profilów
   useEffect(() => {
     const fetchWorkoutAndAuthor = async () => {
       try {
@@ -54,7 +54,6 @@ export default function WorkoutDetails() {
     fetchWorkoutAndAuthor();
   }, [id, currentUser]);
 
-  // 2. Nasłuchiwanie komentarzy na żywo
   useEffect(() => {
     const commentsRef = collection(db, 'workouts', id, 'comments');
     const q = query(commentsRef, orderBy('createdAt', 'asc'));
@@ -70,7 +69,6 @@ export default function WorkoutDetails() {
     return () => unsubscribe();
   }, [id]);
 
-  // 3. Logika Lajkowania
   const handleLikeToggle = async () => {
     if (!currentUser) return;
     const workoutRef = doc(db, 'workouts', id);
@@ -90,7 +88,6 @@ export default function WorkoutDetails() {
     }
   };
 
-  // 4. Logika dodawania komentarza
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim() || !currentUser) return;
@@ -125,7 +122,13 @@ export default function WorkoutDetails() {
   const hasLiked = likes.includes(currentUser?.uid);
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}>
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}
+      style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '40px' }}
+    >
       
       {/* Przycisk powrotu na górze (zostaje nienaruszony dla wygodnej nawigacji) */}
       <button 
@@ -259,6 +262,6 @@ export default function WorkoutDetails() {
         </form>
       </div>
 
-    </div>
+    </motion.div>
   );
 }

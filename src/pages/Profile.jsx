@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut, updateProfile } from 'firebase/auth';
-import { Link } from 'react-router-dom'; // Import Link do nawigacji
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion'; // Import framer-motion
 
 export default function Profile() {
   const [bio, setBio] = useState('Zapalony sportowiec 🚀');
@@ -20,7 +21,21 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Stan dla motywu (odczyt z localStorage)
+  const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
+
   const user = auth.currentUser;
+
+  // Efekt ustawiający atrybut data-theme na tagu html
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('app-theme', theme);
+  }, [theme]);
+
+  // Funkcja przełączająca motyw
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -125,9 +140,39 @@ export default function Profile() {
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie profilu...</p>;
 
+  // Używamy <motion.div> jako głównego kontenera strony
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}>
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}   
+      style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}
+    >
       
+      {/* Przełącznik motywu na samej górze */}
+      <div style={{ backgroundColor: 'var(--bg-surface)', padding: '15px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Motyw aplikacji</span>
+        <button 
+          onClick={toggleTheme}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: 'transparent',
+            border: '2px solid var(--accent-blue)',
+            color: 'var(--accent-blue)',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s'
+          }}
+        >
+          {theme === 'dark' ? '🌙' : '☀️'}
+        </button>
+      </div>
+
       {/* SEKCJA GŁÓWNA PROFILU */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <div style={{ 
@@ -152,7 +197,7 @@ export default function Profile() {
               placeholder="Nazwa użytkownika"
               value={tempUsername} 
               onChange={(e) => setTempUsername(e.target.value)} 
-              style={{ marginBottom: '10px' }}
+              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
             />
             
             <input 
@@ -160,7 +205,7 @@ export default function Profile() {
               placeholder="Link do zdjęcia profilowego (URL)"
               value={tempPhotoUrl} 
               onChange={(e) => setTempPhotoUrl(e.target.value)} 
-              style={{ marginBottom: '10px' }}
+              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
             />
 
             <input 
@@ -169,7 +214,7 @@ export default function Profile() {
               value={tempBio} 
               onChange={(e) => setTempBio(e.target.value)} 
               maxLength={60}
-              style={{ marginBottom: '20px' }}
+              style={{ marginBottom: '20px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
             />
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -290,6 +335,6 @@ export default function Profile() {
         </div>
       )}
 
-    </div>
+    </motion.div>
   );
 }

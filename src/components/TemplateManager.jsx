@@ -146,7 +146,7 @@ export default function TemplateManager({ onStartTemplate }) {
                 value={selectedCategory} 
                 onChange={val => {setSelectedCategory(val); setSelectedExercise('');}}
                 options={categories}
-                placeholder="-- Partia --"
+                placeholder="Partia"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -154,7 +154,7 @@ export default function TemplateManager({ onStartTemplate }) {
                 value={selectedExercise} 
                 onChange={val => setSelectedExercise(val)}
                 options={filteredExercises.map(e => e.name)}
-                placeholder="-- Ćwiczenie --"
+                placeholder="Ćwiczenie"
                 disabled={!selectedCategory}
               />
             </div>

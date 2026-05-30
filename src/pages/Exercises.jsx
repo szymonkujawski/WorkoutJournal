@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from 'framer-motion';
 
 export default function Exercises() {
   const [workouts, setWorkouts] = useState([]);
   const [performedExercises, setPerformedExercises] = useState([]); 
   const [availableCategories, setAvailableCategories] = useState([]);
-  const [fullExerciseDict, setFullExerciseDict] = useState({}); // Nowość: pełne obiekty ćwiczeń (opisy, zdjęcia)
+  const [fullExerciseDict, setFullExerciseDict] = useState({}); 
   
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedExercise, setSelectedExercise] = useState('');
   
-  // Nowy stan: trzyma obiekt ćwiczenia, którego szczegóły aktualnie przeglądamy
   const [viewingDetails, setViewingDetails] = useState(null);
   
   const [chartData, setChartData] = useState([]);
@@ -23,7 +23,6 @@ export default function Exercises() {
       if (!auth.currentUser) return;
 
       try {
-        // 1. Pobieramy pełen słownik ćwiczeń wraz z opisami i zdjęciami
         const dictSnap = await getDocs(collection(db, 'exercises_dict'));
         const dictMap = {};
         dictSnap.forEach(doc => {
@@ -37,7 +36,6 @@ export default function Exercises() {
         });
         setFullExerciseDict(dictMap);
 
-        // 2. Pobieramy historię treningów użytkownika
         const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
         const querySnapshot = await getDocs(q);
         const fetchedWorkouts = [];
@@ -54,7 +52,6 @@ export default function Exercises() {
 
         setWorkouts(fetchedWorkouts);
 
-        // 3. Wyciągamy unikalne ćwiczenia wykonane przez użytkownika
         const uniqueNames = new Set();
         fetchedWorkouts.forEach(w => {
           if (w.exercises) {
@@ -142,7 +139,6 @@ export default function Exercises() {
     setChartData(Object.values(dataMap));
   }, [selectedExercise, workouts]);
 
-  // Funkcja uruchamiająca widok szczegółowy ćwiczenia
   const handleOpenDetails = (exerciseName) => {
     const exerciseInfo = fullExerciseDict[exerciseName] || {
       name: exerciseName,
@@ -155,12 +151,15 @@ export default function Exercises() {
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie danych analitycznych...</p>;
 
-  // --- WIDOK 2: SZCZEGÓŁY ĆWICZENIA (Encyklopedia) ---
   if (viewingDetails) {
     return (
-      <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}>
-        
-        {/* Przycisk powrotu na stronę główną analizy */}
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }} 
+        animate={{ opacity: 1, x: 0 }}   
+        exit={{ opacity: 0, x: 20 }}     
+        transition={{ duration: 0.2 }}
+        style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}
+      >
         <button 
           onClick={() => setViewingDetails(null)}
           style={{
@@ -188,7 +187,6 @@ export default function Exercises() {
             {viewingDetails.name}
           </h3>
 
-          {/* Ramka na zdjęcie / grafikę demonstracyjną */}
           <div style={{ 
             width: '100%', 
             height: '240px', 
@@ -208,7 +206,6 @@ export default function Exercises() {
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
               />
             ) : (
-              /* Bardzo ładny, minimalistyczny placeholder geometryczny, jeśli ćwiczenie nie ma zdjęcia */
               <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '8px', opacity: 0.4 }}>
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -228,22 +225,25 @@ export default function Exercises() {
               'Prawidłowe technicznie wykonywanie tego ćwiczenia maksymalizuje zaangażowanie docelowej partii mięśniowej i zapobiega kontuzjom. Pamiętaj o pełnym zakresie ruchu (ROM), kontrolowanej fazie negatywnej oraz utrzymaniu stabilnego, spiętego korpusu przez całą serię.'}
           </p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  // --- WIDOK 1: STANDARDOWY PANEL ANALIZY (Kafelki + Wykres) ---
   const exercisesToDisplay = performedExercises.filter(ex => ex.category === selectedCategory);
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}>
-      
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}
+      style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}
+    >
       <h3 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Analiza postępów</h3>
 
       {availableCategories.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '25px' }}>
           
-          {/* Wybór Partii */}
           <div style={{ backgroundColor: 'var(--bg-surface)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
               Wybierz partię:
@@ -274,7 +274,6 @@ export default function Exercises() {
             </div>
           </div>
 
-          {/* Zaktualizowany układ kafelków ćwiczeń z wbudowaną ikonką (i) */}
           {selectedCategory && (
             <div style={{ backgroundColor: 'var(--bg-surface)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--text-secondary)' }}>
@@ -293,10 +292,9 @@ export default function Exercises() {
                         border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
                         backgroundColor: isSelected ? 'rgba(100, 181, 246, 0.08)' : 'transparent',
                         transition: 'all 0.2s ease',
-                        padding: '0 2px 0 12px' // szeroki margines z lewej dla nazwy, wąski z prawej dla ikonki
+                        padding: '0 2px 0 12px' 
                       }}
                     >
-                      {/* Kliknięcie w nazwę ćwiczenia zmienia wykres */}
                       <span
                         onClick={() => setSelectedExercise(exObj.name)}
                         style={{
@@ -311,7 +309,6 @@ export default function Exercises() {
                         {exObj.name}
                       </span>
 
-                      {/* Mały, odseparowany kafelek z minimalistyczną wektorową ikonką (i) */}
                       <button
                         onClick={() => handleOpenDetails(exObj.name)}
                         title="Szczegóły ćwiczenia"
@@ -347,7 +344,6 @@ export default function Exercises() {
         <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Nie masz jeszcze żadnych zapisanych ćwiczeń w historii.</p>
       )}
 
-      {/* Sekcja Wykresu */}
       {selectedExercise && chartData.length > 0 ? (
         <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px 10px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>
@@ -389,6 +385,6 @@ export default function Exercises() {
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '30px' }}>Brak wystarczających danych do narysowania wykresu dla tego ćwiczenia.</p>
       ) : null}
       
-    </div>
+    </motion.div>
   );
 }

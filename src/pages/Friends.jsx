@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, onSnapshot, or } from 'firebase/firestore';
 import { Link } from 'react-router-dom'; 
+import { motion } from 'framer-motion';
 
 export default function Friends() {
   const [searchEmail, setSearchEmail] = useState('');
@@ -17,7 +18,6 @@ export default function Friends() {
   const [friendToDelete, setFriendToDelete] = useState(null);
   const [alertData, setAlertData] = useState({ show: false, message: '', type: 'info' });
 
-  // NOWOŚĆ: Stan przechowujący wszystkie profile użytkowników, aby łatwo dobierać nazwy i awatary do feedu
   const [usersProfiles, setUsersProfiles] = useState({});
 
   const currentUser = auth.currentUser;
@@ -41,7 +41,6 @@ export default function Friends() {
       const pending = [];
       const accepted = [];
 
-      // Zapisujemy wszystkie profile do stanu aplikacji
       const profileSnap = await getDocs(collection(db, 'users_profiles'));
       const profilesMap = {};
       profileSnap.forEach(p => {
@@ -217,7 +216,13 @@ export default function Friends() {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '30px' }}>
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}
+      style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '30px' }}
+    >
 
       {/* Aktualności znajomych */}
       <div style={{ marginBottom: '30px' }}>
@@ -229,7 +234,6 @@ export default function Friends() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
             {friendsWorkouts.map(workout => {
-              // Pobieramy dane profilu autora z zapisanego stanu
               const authorProfile = usersProfiles[workout.userId] || {};
               const authorName = authorProfile.username || authorProfile.displayName || workout.userEmail?.split('@')[0] || 'Nieznany';
               const authorPhoto = authorProfile.photoURL || '';
@@ -238,7 +242,6 @@ export default function Friends() {
                 <div key={workout.id} style={{ padding: '15px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     
-                    {/* Zmodyfikowany widok autora ze zdjęciem i nickiem */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', color: '#121212', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden', flexShrink: 0, fontSize: '0.85em' }}>
                         {authorPhoto ? (
@@ -262,7 +265,6 @@ export default function Friends() {
                   <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
                     <strong style={{ color: 'var(--text-primary)' }}>Wykonane ćwiczenia:</strong>{' '}
                     {workout.exercises ? workout.exercises.map(ex => ex.name).join(', ') : 'Brak szczegółów'}
-                    {/* NOWY PRZYCISK: Przejście do szczegółów sesji i komentarzy */}
                 <Link 
                   to={`/workout/${workout.id}`} 
                   style={{ 
@@ -457,6 +459,6 @@ export default function Friends() {
         </div>
       )}
 
-    </div>
+    </motion.div>
   );
 }

@@ -267,10 +267,15 @@ export default function WorkoutHistory() {
             </span>
           </div>
           
-          {/* Czas i Objętość */}
-          <div style={{ display: 'flex', gap: '15px', fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '15px', fontStyle: 'italic' }}>
+          {/* Czas, Objętość i Rekordy (PR) */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '15px', fontStyle: 'italic' }}>
             <span>Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
             <span>Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
+            
+            {/* Wyświetlanie PR z ujednoliconym stylem */}
+            {workout.prCount && workout.prCount > 0 ? (
+              <span>Rekordy: <strong style={{ color: 'var(--text-primary)' }}>{workout.prCount}</strong></span>
+            ) : null}
           </div>
           
           {/* Rozpiska Ćwiczeń oraz dokładnych serii/kilogramów */}

@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react'; // ZMIANA: Dodano useEffect
+import { useState, useEffect } from 'react'; 
+import { motion } from 'framer-motion'; // Dodałem import Framer Motion
 import WorkoutSession from '../components/WorkoutSession';
 import TemplateManager from '../components/TemplateManager';
 
 export default function Home() {
   const [activeTemplate, setActiveTemplate] = useState(null);
-  const [isSessionRunning, setIsSessionRunning] = useState(false); // NOWOŚĆ: Stan trwającej sesji
+  const [isSessionRunning, setIsSessionRunning] = useState(false);
 
-  // NOWOŚĆ: Nasłuchujemy, czy w tle działa trening zapisany w localStorage
   useEffect(() => {
     const checkActiveWorkout = () => {
       const active = localStorage.getItem('active_workout_state');
       setIsSessionRunning(!!active);
     };
 
-    checkActiveWorkout(); // Sprawdź od razu po wejściu na stronę
-    const interval = setInterval(checkActiveWorkout, 1000); // Sprawdzaj co sekundę (reaguje natychmiast na kliknięcie Zakończ/Rozpocznij)
+    checkActiveWorkout(); 
+    const interval = setInterval(checkActiveWorkout, 1000); 
     
     return () => clearInterval(interval);
   }, []);
@@ -29,7 +29,13 @@ export default function Home() {
   };
 
   return (
-    <div style={{ paddingBottom: '20px' }}>
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }} 
+      animate={{ opacity: 1, x: 0 }}   
+      exit={{ opacity: 0, x: 20 }}     
+      transition={{ duration: 0.2 }}
+      style={{ paddingBottom: '20px' }}
+    >
       {/* Usunięto napis Strona Główna */}
       
       {/* Zawsze renderujemy WorkoutSession, on sam wie czy pokazać guzik startu, czy trwający trening */}
@@ -39,6 +45,6 @@ export default function Home() {
       {!isSessionRunning && (
         <TemplateManager onStartTemplate={handleStartFromTemplate} />
       )}
-    </div>
+    </motion.div>
   );
 }
