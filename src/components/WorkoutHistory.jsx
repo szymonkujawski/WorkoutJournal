@@ -16,6 +16,10 @@ export default function WorkoutHistory() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
 
+  // NOWOŚĆ: Stany dla modala usuwania
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [workoutToDelete, setWorkoutToDelete] = useState(null);
+
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -82,18 +86,34 @@ export default function WorkoutHistory() {
     return totalVolume.toLocaleString('pl-PL');
   };
 
-  const handleDeleteWorkout = async (e, workoutId) => {
+  // ZMIANA: Zamiast window.confirm, odpalamy modal
+  const handleDeleteClick = (e, workoutId) => {
     e.preventDefault();
-    e.stopPropagation(); // Blokuje otwarcie szczegółów sesji podczas usuwania
-    
-    const confirmDelete = window.confirm("Czy na pewno chcesz usunąć ten trening z historii?");
-    if (!confirmDelete) return;
+    e.stopPropagation(); // Blokuje otwarcie szczegółów sesji podczas klikania w przycisk
+    setWorkoutToDelete(workoutId);
+    setShowDeleteModal(true);
+  };
 
+  // NOWOŚĆ: Funkcja do faktycznego skasowania po potwierdzeniu
+  const confirmDelete = async () => {
+    if (!workoutToDelete) return;
     try {
-      await deleteDoc(doc(db, 'workouts', workoutId));
+      await deleteDoc(doc(db, 'workouts', workoutToDelete));
+      setShowDeleteModal(false);
+      setWorkoutToDelete(null);
     } catch (error) {
       alert("Błąd podczas usuwania: " + error.message);
     }
+  };
+
+  // NOWOŚĆ: Anulowanie kasowania
+  const cancelDelete = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowDeleteModal(false);
+    setWorkoutToDelete(null);
   };
 
   // --- LOGIKA KALENDARZA ---
@@ -123,7 +143,7 @@ export default function WorkoutHistory() {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setHighlightedId(targetWorkout.id);
-          setTimeout(() => setHighlightedId(null), 2000); // Miganie kafelka po kliknięciu
+          setTimeout(() => setHighlightedId(null), 2000); 
         }
       }
     }
@@ -247,9 +267,9 @@ export default function WorkoutHistory() {
           onMouseEnter={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)' }}
           onMouseLeave={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface)' }}
         >  
-          {/* Przycisk Usuń */}
+          {/* Przycisk Usuń - teraz wywołuje handleDeleteClick */}
           <button 
-            onClick={(e) => handleDeleteWorkout(e, workout.id)}
+            onClick={(e) => handleDeleteClick(e, workout.id)}
             style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'transparent', border: 'none', color: 'rgba(244, 67, 54, 0.6)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em', transition: 'color 0.2s' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#f44336'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(244, 67, 54, 0.6)'}
@@ -311,7 +331,35 @@ export default function WorkoutHistory() {
 
         </div>
       ))}
-      
+
+      {/* MODAL POTWIERDZENIA USUNIĘCIA */}
+      {showDeleteModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '30px 25px', borderRadius: '16px', border: '2px solid #f44336', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(244, 67, 54, 0.2)' }}>
+            
+            <h2 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Usunąć trening?</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', margin: '0 0 25px 0', lineHeight: '1.5' }}>
+              Czy na pewno chcesz usunąć ten trening z historii? Ta operacja jest <strong style={{color: '#f44336'}}>nieodwracalna</strong>.
+            </p>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={cancelDelete} 
+                style={{ flex: 1, padding: '12px', border: '1px solid var(--border-color)', borderRadius: '10px', backgroundColor: 'transparent', color: 'var(--text-primary)', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Anuluj
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', backgroundColor: '#f44336', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
