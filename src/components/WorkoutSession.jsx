@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
+import html2canvas from 'html2canvas';
 
 import CustomSelect from './CustomSelect';
 
@@ -21,13 +22,14 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   
   const [showAddExerciseBox, setShowAddExerciseBox] = useState(false);
   
-  // NOWOŚĆ: Stan dla widoku szczegółów ćwiczenia podczas dodawania
   const [viewingDetails, setViewingDetails] = useState(null);
 
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   
   const [workoutSummary, setWorkoutSummary] = useState({ duration: 0, volume: 0, totalWorkouts: 0, exerciseCount: 0, prCount: 0 });
+
+  const summaryRef = useRef(null);
 
   useEffect(() => {
     const savedState = localStorage.getItem('active_workout_state');
@@ -167,7 +169,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setIsWorkoutActive(true);
   };
 
-  // ZMIANA: Funkcja przyjmuje teraz nazwę ćwiczenia jako argument
   const handleAddExerciseToSession = (exerciseName) => {
     setExercises([
       ...exercises, 
@@ -300,6 +301,41 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     fetchData();
 
     if (onWorkoutEnd) onWorkoutEnd(); 
+  };
+
+  const handleShareWorkout = async () => {
+    if (!summaryRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(summaryRef.current, {
+        backgroundColor: '#121212', 
+        scale: 2, 
+        logging: false,
+        useCORS: true
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        
+        const file = new File([blob], 'moj_trening.png', { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Mój nowy trening!',
+            text: `Właśnie ukończyłem swój ${workoutSummary.totalWorkouts} trening! 🔥`,
+            files: [file]
+          });
+        } else {
+          const link = document.createElement('a');
+          link.download = 'moj_trening.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
+      });
+    } catch (error) {
+      console.error("Błąd podczas udostępniania:", error);
+      alert("Nie udało się wygenerować zdjęcia.");
+    }
   };
 
   if (!isWorkoutActive) {
@@ -459,11 +495,9 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </div>
       )}
 
-      {/* NOWOŚĆ: Sekcja dodawania ćwiczenia w stylu z TemplateManager */}
       {showAddExerciseBox ? (
         <div style={{ padding: '15px', backgroundColor: 'var(--bg-primary)', borderRadius: '10px', border: '1px dashed var(--accent-blue)', marginBottom: '20px' }}>
           
-          {/* Widok szczegółów ćwiczenia */}
           {viewingDetails ? (
             <div>
               <button 
@@ -527,7 +561,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
               </div>
             </div>
           ) : (
-            /* Widok listy ćwiczeń */
             <div>
               <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)', textAlign: 'center' }}>Wybierz ćwiczenie</h4>
               
@@ -591,7 +624,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </button>
       )}
 
-      {/* NIEBIESKI PRZYCISK ZAPISU */}
       <button 
         onClick={handleSaveWorkout} 
         style={{ width: '100%', padding: '16px', backgroundColor: 'var(--accent-blue)', color: '#121212', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer', marginBottom: '10px' }}
@@ -599,7 +631,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         Zakończ trening
       </button>
 
-      {/* Przycisk aktywujący modala anulowania */}
       <button 
         onClick={() => setShowCancelModal(true)} 
         style={{ width: '100%', padding: '14px', backgroundColor: 'transparent', color: '#f44336', border: '1px solid #f44336', borderRadius: '8px', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer' }}
@@ -609,54 +640,72 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
       {message && <p style={{ textAlign: 'center', marginTop: '15px', fontWeight: 'bold', color: '#f44336' }}>{message}</p>}
 
-      {/* MODAL Z PODSUMOWANIEM */}
+      {/* MODAL Z PODSUMOWANIEM I UDOSTĘPNIANIEM */}
       {showCongratsModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-          <div style={{ backgroundColor: 'var(--bg-surface)', padding: '35px 25px', borderRadius: '16px', border: '2px solid var(--accent-green)', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(76, 175, 80, 0.2)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.85)', zIndex: 9999, padding: '20px', boxSizing: 'border-box', overflowY: 'auto', display: 'flex' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '350px', margin: 'auto' }}>
             
-            <div style={{ fontSize: '4em', marginBottom: '10px', animation: 'bounce 1s ease infinite' }}>🔥</div>
-            
-            <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>Świetna robota!</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1em', margin: '0 0 25px 0' }}>
-              To Twój <strong style={{ color: 'var(--accent-blue)', fontSize: '1.2em' }}>{workoutSummary.totalWorkouts}</strong> trening. Oby tak dalej!
-            </p>
-            
-            <div style={{ backgroundColor: 'var(--bg-primary)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '25px', textAlign: 'left' }}>
+            {/* Element docelowy z podsumowaniem (Tego robimy zdjęcie) */}
+            <div 
+              ref={summaryRef}
+              style={{ backgroundColor: 'var(--bg-surface)', padding: '35px 25px', borderRadius: '16px', border: '2px solid var(--accent-green)', width: '100%', textAlign: 'center', boxShadow: '0 10px 30px rgba(76, 175, 80, 0.2)', marginBottom: '15px', boxSizing: 'border-box' }}
+            >
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Czas:</span>
-                <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{formatTime(workoutSummary.duration)}</strong>
-              </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Objętość:</span>
-                <strong style={{ color: 'var(--accent-green)', fontSize: '1.1em' }}>{workoutSummary.volume} kg</strong>
-              </div>
+              <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>Świetna robota!</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1em', margin: '0 0 25px 0' }}>
+                To Twój <strong style={{ color: 'var(--accent-blue)', fontSize: '1.2em' }}>{workoutSummary.totalWorkouts}</strong> trening. Oby tak dalej!
+              </p>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: workoutSummary.prCount > 0 ? '10px' : '0' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Ćwiczenia:</span>
-                <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{workoutSummary.exerciseCount}</strong>
-              </div>
-
-              {workoutSummary.prCount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Nowe Rekordy (PR):</span>
-                  <strong style={{ color: '#FFD700', fontSize: '1.2em', textShadow: '0 0 8px rgba(255, 215, 0, 0.4)' }}>
-                    🏆 {workoutSummary.prCount}
-                  </strong>
+              <div style={{ backgroundColor: 'var(--bg-primary)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border-color)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Czas:</span>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{formatTime(workoutSummary.duration)}</strong>
                 </div>
-              )}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Objętość:</span>
+                  <strong style={{ color: 'var(--accent-green)', fontSize: '1.1em' }}>{workoutSummary.volume} kg</strong>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: workoutSummary.prCount > 0 ? '10px' : '0' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Ćwiczenia:</span>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '1.1em' }}>{workoutSummary.exerciseCount}</strong>
+                </div>
 
+                {workoutSummary.prCount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Nowe Rekordy (PR):</span>
+                    <strong style={{ color: '#FFD700', fontSize: '1.2em', textShadow: '0 0 8px rgba(255, 215, 0, 0.4)' }}>
+                       {workoutSummary.prCount}
+                    </strong>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <button 
-              onClick={handleCloseCongratsModal} 
-              style={{ width: '100%', padding: '15px', border: 'none', borderRadius: '10px', backgroundColor: 'var(--accent-green)', color: '#121212', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1em', transition: 'transform 0.1s' }}
-              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              Zamknij podsumowanie
-            </button>
+            {/* Przyciski poza ekranem zdjęcia */}
+            <div style={{ display: 'flex', gap: '10px', width: '100%', boxSizing: 'border-box' }}>
+              <button 
+                onClick={handleShareWorkout} 
+                style={{ flex: 1, padding: '15px', border: '1px solid var(--accent-blue)', borderRadius: '10px', backgroundColor: 'var(--bg-primary)', color: 'var(--accent-blue)', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em', transition: 'transform 0.1s' }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                 Udostępnij
+              </button>
+              
+              <button 
+                onClick={handleCloseCongratsModal} 
+                style={{ flex: 1, padding: '15px', border: 'none', borderRadius: '10px', backgroundColor: 'var(--accent-green)', color: '#121212', fontWeight: 'bold', cursor: 'pointer', fontSize: '1em', transition: 'transform 0.1s' }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                Zamknij
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -665,7 +714,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       {showCancelModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: 'var(--bg-surface)', padding: '30px 25px', borderRadius: '16px', border: '2px solid #f44336', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(244, 67, 54, 0.2)' }}>
-            
             
             <h2 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Przerwać trening?</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95em', margin: '0 0 25px 0', lineHeight: '1.5' }}>
