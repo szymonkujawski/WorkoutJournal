@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import html2canvas from 'html2canvas';
 
 import CustomSelect from './CustomSelect';
@@ -69,17 +70,26 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     }
   }, [prefilledTemplate]);
 
+  // NAPRAWIONE POBIERANIE Z onAuthStateChanged
   useEffect(() => {
-    const fetchData = async () => {
-      if (!auth.currentUser) return;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      
       try {
         const dictSnap = await getDocs(collection(db, 'exercises_dict'));
         const exList = [];
         dictSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
+
+        const customQ = query(collection(db, 'custom_exercises'), where('userId', '==', user.uid));
+        const customSnap = await getDocs(customQ);
+        customSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
+
+        exList.sort((a, b) => a.name.localeCompare(b.name));
+
         setGlobalExercises(exList);
         setCategories([...new Set(exList.map(item => item.category))]);
 
-        const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
+        const q = query(collection(db, 'workouts'), where('userId', '==', user.uid));
         const histSnap = await getDocs(q);
         const histList = [];
         histSnap.forEach(doc => histList.push(doc.data()));
@@ -89,8 +99,9 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       } catch (error) {
         console.error("Błąd pobierania danych:", error);
       }
-    };
-    fetchData();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -290,7 +301,9 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setViewingDetails(null);
     setShowAddExerciseBox(false);
     
+    // NAPRAWIONE POBIERANIE PO ZAKOŃCZENIU
     const fetchData = async () => {
+      if (!auth.currentUser) return;
       const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
       const histSnap = await getDocs(q);
       const histList = [];
@@ -652,6 +665,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
               style={{ backgroundColor: 'var(--bg-surface)', padding: '35px 25px', borderRadius: '16px', border: '2px solid var(--accent-green)', width: '100%', textAlign: 'center', boxShadow: '0 10px 30px rgba(76, 175, 80, 0.2)', marginBottom: '15px', boxSizing: 'border-box' }}
             >
               
+              <div style={{ fontSize: '4em', marginBottom: '10px', animation: 'bounce 1s ease infinite' }}>🔥</div>
               
               <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>Świetna robota!</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1em', margin: '0 0 25px 0' }}>
@@ -678,7 +692,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Nowe Rekordy (PR):</span>
                     <strong style={{ color: '#FFD700', fontSize: '1.2em', textShadow: '0 0 8px rgba(255, 215, 0, 0.4)' }}>
-                       {workoutSummary.prCount}
+                      🏆 {workoutSummary.prCount}
                     </strong>
                   </div>
                 )}
@@ -693,7 +707,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                 onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
                 onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
-                 Udostępnij
+                📸 Udostępnij
               </button>
               
               <button 

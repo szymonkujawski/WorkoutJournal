@@ -1,8 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-// Importujemy moduł bazy danych Firestore
-import { getFirestore } from "firebase/firestore";
+// Importujemy moduł bazy danych Firestore oraz funkcję do trybu offline
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,6 +20,15 @@ const app = initializeApp(firebaseConfig);
 // Inicjalizujemy usługi
 const auth = getAuth(app);
 const db = getFirestore(app); // To jest brakująca baza!
+
+// NOWOŚĆ: Uruchomienie lokalnej pamięci podręcznej (Offline Persistence)
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Tryb offline działa tylko w jednej otwartej karcie przeglądarki na raz.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('Twoja przeglądarka nie wspiera trybu offline dla Firestore.');
+  }
+});
 
 // Eksportujemy obie usługi, aby komponenty mogły z nich korzystać
 export { auth, db };

@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
-import { signOut, updateProfile } from 'firebase/auth';
+import { signOut, updateProfile, onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion'; 
 
-// POPRAWIONY IMPORT: Wychodzimy folder wyżej i wchodzimy do components
 import StreakWidget from '../components/StreakWidget';
 
 export default function Profile() {
@@ -29,8 +28,6 @@ export default function Profile() {
 
   const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
 
-  const user = auth.currentUser;
-
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('app-theme', theme);
@@ -40,9 +37,13 @@ export default function Profile() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
+  // NAPRAWIONE POBIERANIE Z onAuthStateChanged
   useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user) return;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       setDisplayName(user.displayName || '');
       setPhotoURL(user.photoURL || '');
@@ -71,9 +72,13 @@ export default function Profile() {
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
         let last30DaysCount = 0;
+        
         workouts.forEach(w => {
-          if (w.createdAt && w.createdAt.toDate() >= thirtyDaysAgo) {
-            last30DaysCount++;
+          // Zabezpieczenie na wypadek działania w trybie offline (brak w pełni zainicjowanej daty)
+          if (w.createdAt && typeof w.createdAt.toDate === 'function') {
+            if (w.createdAt.toDate() >= thirtyDaysAgo) {
+              last30DaysCount++;
+            }
           }
         });
 
@@ -83,9 +88,10 @@ export default function Profile() {
         workouts.forEach(w => {
           const checkSets = (exerciseName, sets) => {
             sets?.forEach(set => {
-              if (exerciseName === 'Wyciskanie sztangi poziomo' && set.weight > maxBench) maxBench = set.weight;
-              if (exerciseName === 'Przysiad ze sztangą' && set.weight > maxSquat) maxSquat = set.weight;
-              if (exerciseName === 'Martwy ciąg' && set.weight > maxDeadlift) maxDeadlift = set.weight;
+              const weightVal = Number(set.weight) || 0;
+              if (exerciseName === 'Wyciskanie sztangi poziomo' && weightVal > maxBench) maxBench = weightVal;
+              if (exerciseName === 'Przysiad ze sztangą' && weightVal > maxSquat) maxSquat = weightVal;
+              if (exerciseName === 'Martwy ciąg' && weightVal > maxDeadlift) maxDeadlift = weightVal;
             });
           };
 
@@ -103,10 +109,10 @@ export default function Profile() {
         console.error("Błąd pobierania danych profilu:", error);
         setLoading(false);
       }
-    };
+    });
 
-    fetchProfileData();
-  }, [user]);
+    return () => unsubscribe();
+  }, []);
 
   const handleEditClick = () => {
     setTempBio(bio);
@@ -116,6 +122,7 @@ export default function Profile() {
   };
 
   const handleSaveProfile = async () => {
+    const user = auth.currentUser;
     if (!user) return;
     try {
       await updateProfile(user, {
@@ -186,7 +193,7 @@ export default function Profile() {
           {photoURL ? (
             <img src={photoURL} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            (displayName || user?.email || 'U')[0].toUpperCase()
+            (displayName || auth.currentUser?.email || 'U')[0].toUpperCase()
           )}
         </div>
         
@@ -230,7 +237,7 @@ export default function Profile() {
               {displayName || 'Użytkownik bez nazwy'}
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85em', margin: '0 0 10px 0' }}>
-              {user?.email}
+              {auth.currentUser?.email}
             </p>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.95em', margin: '0 0 10px 0', fontStyle: 'italic' }}>
               {bio}
@@ -306,7 +313,7 @@ export default function Profile() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                   <strong style={{ fontSize: '1em', color: 'var(--text-primary)' }}>{workout.workoutName || 'Trening'}</strong>
                   <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-                    {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : ''}
+                    {workout.createdAt?.toDate && typeof workout.createdAt.toDate === 'function' ? workout.createdAt.toDate().toLocaleDateString('pl-PL') : ''}
                   </span>
                 </div>
                 <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
