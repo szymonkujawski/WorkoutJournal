@@ -4,6 +4,9 @@ import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 
+// IMPORT WIDŻETU STREAK (Pamiętaj o prawidłowej ścieżce, zakładam że jest w folderze wyżej w components)
+import StreakWidget from '../components/StreakWidget';
+
 export default function UserProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -126,6 +129,11 @@ export default function UserProfile() {
           </p>
         </div>
       </div>
+
+      {/* WIDŻET STREAK ZNAJOMEGO */}
+      {userWorkouts.length > 0 && (
+        <StreakWidget workouts={userWorkouts} />
+      )}
 
       {/* STATYSTYKI */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>

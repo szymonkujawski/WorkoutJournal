@@ -3,7 +3,10 @@ import { db, auth } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut, updateProfile } from 'firebase/auth';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion'; // Import framer-motion
+import { motion } from 'framer-motion'; 
+
+// POPRAWIONY IMPORT: Wychodzimy folder wyżej i wchodzimy do components
+import StreakWidget from '../components/StreakWidget';
 
 export default function Profile() {
   const [bio, setBio] = useState('Zapalony sportowiec 🚀');
@@ -17,22 +20,22 @@ export default function Profile() {
 
   const [stats, setStats] = useState({ total: 0, last30Days: 0 });
   const [prs, setPrs] = useState({ bench: 0, squat: 0, deadlift: 0 });
+  
+  const [allWorkouts, setAllWorkouts] = useState([]);
   const [recentWorkouts, setRecentWorkouts] = useState([]);
+  
   const [loading, setLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Stan dla motywu (odczyt z localStorage)
   const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'dark');
 
   const user = auth.currentUser;
 
-  // Efekt ustawiający atrybut data-theme na tagu html
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('app-theme', theme);
   }, [theme]);
 
-  // Funkcja przełączająca motyw
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -62,6 +65,8 @@ export default function Profile() {
         querySnapshot.forEach((doc) => workouts.push({ id: doc.id, ...doc.data() }));
 
         workouts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        setAllWorkouts(workouts);
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
@@ -140,7 +145,6 @@ export default function Profile() {
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie profilu...</p>;
 
-  // Używamy <motion.div> jako głównego kontenera strony
   return (
     <motion.div 
       initial={{ opacity: 0, x: -20 }} 
@@ -150,7 +154,6 @@ export default function Profile() {
       style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '20px' }}
     >
       
-      {/* Przełącznik motywu na samej górze */}
       <div style={{ backgroundColor: 'var(--bg-surface)', padding: '15px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>Motyw aplikacji</span>
         <button 
@@ -173,7 +176,6 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* SEKCJA GŁÓWNA PROFILU */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <div style={{ 
           width: '90px', height: '90px', borderRadius: '50%', backgroundColor: 'var(--accent-blue)', 
@@ -197,7 +199,7 @@ export default function Profile() {
               placeholder="Nazwa użytkownika"
               value={tempUsername} 
               onChange={(e) => setTempUsername(e.target.value)} 
-              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }}
             />
             
             <input 
@@ -205,7 +207,7 @@ export default function Profile() {
               placeholder="Link do zdjęcia profilowego (URL)"
               value={tempPhotoUrl} 
               onChange={(e) => setTempPhotoUrl(e.target.value)} 
-              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              style={{ marginBottom: '10px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }}
             />
 
             <input 
@@ -214,11 +216,11 @@ export default function Profile() {
               value={tempBio} 
               onChange={(e) => setTempBio(e.target.value)} 
               maxLength={60}
-              style={{ marginBottom: '20px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              style={{ marginBottom: '20px', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }}
             />
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', cursor: 'pointer' }}>Anuluj</button>
+              <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Anuluj</button>
               <button onClick={handleSaveProfile} style={{ flex: 1, padding: '10px', backgroundColor: 'var(--accent-green)', color: '#121212', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Zapisz</button>
             </div>
           </div>
@@ -242,6 +244,11 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* WIDŻET GAMIFIKACJI (STREAK) */}
+      {allWorkouts.length > 0 && (
+        <StreakWidget workouts={allWorkouts} />
+      )}
 
       {/* STATYSTYKI */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
@@ -272,7 +279,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* HISTORIA - ZAKTUALIZOWANA (KLIKALNE KAFELKI) */}
+      {/* HISTORIA */}
       <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '15px', color: 'var(--text-primary)' }}>Ostatnie sesje</h4>
       {recentWorkouts.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Brak historii treningowej.</p>
