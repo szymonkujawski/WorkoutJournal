@@ -1,17 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { db, auth } from '../firebase';
-// NOWOŚĆ: Import getDocsFromCache
 import { collection, addDoc, getDocs, getDocsFromCache, serverTimestamp, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import html2canvas from 'html2canvas';
 
 import CustomSelect from './CustomSelect';
+import { TimerContext } from '../App'; // Importujemy timer
 
 export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
+  // POBIERAMY DANE TIMERA Z KONTEKSTU
+  const { startTimer, stopTimer, addTime, restTime, isTimerActive } = useContext(TimerContext);
+
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [startTime, setStartTime] = useState(null); 
   const [elapsedTime, setElapsedTime] = useState(0);
   
+  // ZMIANA: Przechowujemy informację o tym, POD KTÓRĄ serią ma się wyświetlać timer inline
+  const [activeTimerLocation, setActiveTimerLocation] = useState(null);
+
   const [workoutName, setWorkoutName] = useState('');
   const [message, setMessage] = useState('');
   
@@ -23,7 +29,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
   const [exercises, setExercises] = useState([]);
   
   const [showAddExerciseBox, setShowAddExerciseBox] = useState(false);
-  
   const [viewingDetails, setViewingDetails] = useState(null);
 
   const [showCongratsModal, setShowCongratsModal] = useState(false);
@@ -71,14 +76,12 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     }
   }, [prefilledTemplate]);
 
-  // POMINIĘCIE TIMEOUTU: Natychmiastowe ładowanie dla trybu Offline
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       
       const loadExercises = async () => {
         const exList = [];
-        
         try {
           const dictRef = collection(db, 'exercises_dict');
           const dictSnap = navigator.onLine ? await getDocs(dictRef) : await getDocsFromCache(dictRef);
@@ -162,15 +165,29 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setExercises(updatedExercises);
   };
 
+  // ZMIANA: Startujemy timer po ukończeniu serii
   const toggleSetCompletion = (exIndex, setIndex) => {
     const updatedExercises = [...exercises];
-    updatedExercises[exIndex].sets[setIndex].completed = !updatedExercises[exIndex].sets[setIndex].completed;
+    const isCurrentlyCompleted = updatedExercises[exIndex].sets[setIndex].completed;
+    
+    updatedExercises[exIndex].sets[setIndex].completed = !isCurrentlyCompleted;
     setExercises(updatedExercises);
+
+    if (!isCurrentlyCompleted) {
+      // Uruchom timer i wskaż mu, by pokazał się pod tym konkretnym indeksem
+      startTimer(90); 
+      setActiveTimerLocation({ exIdx: exIndex, setIndex: setIndex });
+    } else {
+      // Jeśli odznaczymy serię, wyłączamy dla niej timer
+      if (activeTimerLocation?.exIdx === exIndex && activeTimerLocation?.setIndex === setIndex) {
+        stopTimer();
+        setActiveTimerLocation(null);
+      }
+    }
   };
 
   const handleAddEmptySet = (exIndex) => {
     const updatedExercises = [...exercises];
-    
     let lastWeight = '';
     let lastReps = '';
     if (updatedExercises[exIndex].sets.length > 0) {
@@ -178,7 +195,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       lastWeight = lastSet.weight;
       lastReps = lastSet.reps;
     }
-
     updatedExercises[exIndex].sets.push({
       weight: lastWeight,
       reps: lastReps,
@@ -301,6 +317,10 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       prCount: prCount 
     });
 
+    // Zatrzymujemy timer po zapisie, żeby nie trwał w tle po zakończeniu
+    stopTimer();
+    setActiveTimerLocation(null);
+
     localStorage.removeItem('active_workout_state');
     setShowCongratsModal(true);
     setMessage('');
@@ -317,7 +337,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setViewingDetails(null);
     setShowAddExerciseBox(false);
     
-    // Szybkie odświeżenie historii po zapisie (z obsługą Offline)
     const fetchData = async () => {
       if (!auth.currentUser) return;
       const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
@@ -338,26 +357,13 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
   const handleShareWorkout = async () => {
     if (!summaryRef.current) return;
-    
     try {
-      const canvas = await html2canvas(summaryRef.current, {
-        backgroundColor: '#121212', 
-        scale: 2, 
-        logging: false,
-        useCORS: true
-      });
-
+      const canvas = await html2canvas(summaryRef.current, { backgroundColor: '#121212', scale: 2, logging: false, useCORS: true });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
-        
         const file = new File([blob], 'moj_trening.png', { type: 'image/png' });
-
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'Mój nowy trening!',
-            text: `Właśnie ukończyłem swój ${workoutSummary.totalWorkouts} trening! 🔥`,
-            files: [file]
-          });
+          await navigator.share({ title: 'Mój nowy trening!', text: `Właśnie ukończyłem swój ${workoutSummary.totalWorkouts} trening! 🔥`, files: [file] });
         } else {
           const link = document.createElement('a');
           link.download = 'moj_trening.png';
@@ -441,75 +447,110 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                   <span style={{ width: '40px', textAlign: 'center' }}>✓</span>
                 </div>
 
+                {/* ZMIANA STRUKTURY: Pasek serii i Timer ujęte wewnątrz kontenera kolumnowego */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {ex.sets.map((set, setIdx) => (
-                    <div 
-                      key={setIdx} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        backgroundColor: set.completed ? 'rgba(76, 175, 80, 0.15)' : 'var(--bg-primary)', 
-                        padding: '8px 10px', 
-                        borderRadius: '8px',
-                        border: set.completed ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <button 
-                        type="button"
-                        onClick={() => handleDeleteSetFromExercise(exIdx, setIdx)}
-                        style={{ width: '40px', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer', padding: 0 }}
-                        title="Kliknij, by usunąć serię"
+                    <div key={setIdx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      
+                      {/* Główny pasek serii */}
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          backgroundColor: set.completed ? 'rgba(76, 175, 80, 0.15)' : 'var(--bg-primary)', 
+                          padding: '8px 10px', 
+                          borderRadius: '8px',
+                          border: set.completed ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
+                          transition: 'all 0.2s ease'
+                        }}
                       >
-                        {setIdx + 1}
-                      </button>
-
-                      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                        <input 
-                          type="text" 
-                          inputMode="decimal"
-                          placeholder="-"
-                          value={set.weight} 
-                          onChange={(e) => handleInputChange(exIdx, setIdx, 'weight', e.target.value)}
-                          disabled={set.completed}
-                          style={{ width: '100%', minWidth: '0', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.15em', fontWeight: 'bold', outline: 'none', padding: 0 }}
-                        />
-                      </div>
-
-                      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                        <input 
-                          type="text" 
-                          inputMode="numeric"
-                          placeholder="-"
-                          value={set.reps} 
-                          onChange={(e) => handleInputChange(exIdx, setIdx, 'reps', e.target.value)}
-                          disabled={set.completed}
-                          style={{ width: '100%', minWidth: '0', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.15em', fontWeight: 'bold', outline: 'none', padding: 0 }}
-                        />
-                      </div>
-
-                      <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
                         <button 
                           type="button"
-                          onClick={() => toggleSetCompletion(exIdx, setIdx)}
-                          style={{ 
-                            width: '28px', 
-                            height: '28px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            backgroundColor: set.completed ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.05)', 
-                            border: set.completed ? 'none' : '1px solid var(--text-secondary)', 
-                            borderRadius: '6px', 
-                            color: set.completed ? '#121212' : 'transparent', 
-                            cursor: 'pointer', 
-                            transition: 'all 0.2s ease',
-                            fontWeight: 'bold'
-                          }}
+                          onClick={() => handleDeleteSetFromExercise(exIdx, setIdx)}
+                          style={{ width: '40px', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 'bold', fontSize: '1em', cursor: 'pointer', padding: 0 }}
+                          title="Kliknij, by usunąć serię"
                         >
-                          ✓
+                          {setIdx + 1}
                         </button>
+
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                          <input 
+                            type="text" 
+                            inputMode="decimal"
+                            placeholder="-"
+                            value={set.weight} 
+                            onChange={(e) => handleInputChange(exIdx, setIdx, 'weight', e.target.value)}
+                            disabled={set.completed}
+                            style={{ width: '100%', minWidth: '0', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.15em', fontWeight: 'bold', outline: 'none', padding: 0 }}
+                          />
+                        </div>
+
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            placeholder="-"
+                            value={set.reps} 
+                            onChange={(e) => handleInputChange(exIdx, setIdx, 'reps', e.target.value)}
+                            disabled={set.completed}
+                            style={{ width: '100%', minWidth: '0', textAlign: 'center', backgroundColor: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.15em', fontWeight: 'bold', outline: 'none', padding: 0 }}
+                          />
+                        </div>
+
+                        <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
+                          <button 
+                            type="button"
+                            onClick={() => toggleSetCompletion(exIdx, setIdx)}
+                            style={{ 
+                              width: '28px', 
+                              height: '28px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              backgroundColor: set.completed ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.05)', 
+                              border: set.completed ? 'none' : '1px solid var(--text-secondary)', 
+                              borderRadius: '6px', 
+                              color: set.completed ? '#121212' : 'transparent', 
+                              cursor: 'pointer', 
+                              transition: 'all 0.2s ease',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            ✓
+                          </button>
+                        </div>
                       </div>
+
+                      {/* INLINE TIMER: Pojawia się bezpośrednio pod wykonaną serią */}
+                      {isTimerActive && activeTimerLocation?.exIdx === exIdx && activeTimerLocation?.setIndex === setIdx && (
+                        <div style={{
+                          margin: '2px 0 8px 0',
+                          padding: '12px',
+                          backgroundColor: 'rgba(100, 181, 246, 0.05)',
+                          border: '1px dashed var(--accent-blue)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '10px',
+                          animation: 'fadeIn 0.3s ease-in-out'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: restTime === 0 ? 'var(--accent-green)' : 'var(--accent-blue)', fontWeight: 'bold', fontSize: '1.2em' }}>
+                            ⏱ {restTime > 0 ? formatTime(restTime) : 'Gotowe!'}
+                          </div>
+                          
+                          {restTime > 0 ? (
+                            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                              <button type="button" onClick={() => addTime(-30)} style={{ flex: 1, padding: '6px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', cursor: 'pointer' }}>-30s</button>
+                              <button type="button" onClick={() => addTime(30)} style={{ flex: 1, padding: '6px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', cursor: 'pointer' }}>+30s</button>
+                              <button type="button" onClick={stopTimer} style={{ padding: '6px 15px', background: 'transparent', border: '1px solid #f44336', color: '#f44336', borderRadius: '6px', cursor: 'pointer' }}>Pomiń</button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={stopTimer} style={{ width: '100%', padding: '6px', background: 'var(--bg-surface)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Zamknij</button>
+                          )}
+                        </div>
+                      )}
+
                     </div>
                   ))}
                 </div>

@@ -36,8 +36,8 @@ export default defineConfig({
       },
 
       manifest: {
-        name: 'Aplikacja Treningowa',
-        short_name: 'Treningi',
+        name: 'WorkoutJournal',
+        short_name: 'WorkoutJournal',
         description: 'Twój osobisty asystent treningowy działający offline.',
         theme_color: '#121212',
         background_color: '#121212',
