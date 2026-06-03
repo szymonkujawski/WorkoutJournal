@@ -5,19 +5,16 @@ import { onAuthStateChanged } from 'firebase/auth';
 import html2canvas from 'html2canvas';
 
 import CustomSelect from './CustomSelect';
-import { TimerContext } from '../App'; // Importujemy timer
+import { TimerContext } from '../App';
 
 export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
-  // POBIERAMY DANE TIMERA Z KONTEKSTU
-  const { startTimer, stopTimer, addTime, restTime, isTimerActive } = useContext(TimerContext);
+  // ZMIANA: Pobieramy również informacje o lokalizacji z Kontekstu
+  const { startTimer, stopTimer, addTime, restTime, isTimerActive, activeTimerLocation, setActiveTimerLocation } = useContext(TimerContext);
 
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [startTime, setStartTime] = useState(null); 
   const [elapsedTime, setElapsedTime] = useState(0);
   
-  // ZMIANA: Przechowujemy informację o tym, POD KTÓRĄ serią ma się wyświetlać timer inline
-  const [activeTimerLocation, setActiveTimerLocation] = useState(null);
-
   const [workoutName, setWorkoutName] = useState('');
   const [message, setMessage] = useState('');
   
@@ -165,7 +162,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setExercises(updatedExercises);
   };
 
-  // ZMIANA: Startujemy timer po ukończeniu serii
   const toggleSetCompletion = (exIndex, setIndex) => {
     const updatedExercises = [...exercises];
     const isCurrentlyCompleted = updatedExercises[exIndex].sets[setIndex].completed;
@@ -174,14 +170,11 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setExercises(updatedExercises);
 
     if (!isCurrentlyCompleted) {
-      // Uruchom timer i wskaż mu, by pokazał się pod tym konkretnym indeksem
       startTimer(90); 
       setActiveTimerLocation({ exIdx: exIndex, setIndex: setIndex });
     } else {
-      // Jeśli odznaczymy serię, wyłączamy dla niej timer
       if (activeTimerLocation?.exIdx === exIndex && activeTimerLocation?.setIndex === setIndex) {
         stopTimer();
-        setActiveTimerLocation(null);
       }
     }
   };
@@ -317,9 +310,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       prCount: prCount 
     });
 
-    // Zatrzymujemy timer po zapisie, żeby nie trwał w tle po zakończeniu
     stopTimer();
-    setActiveTimerLocation(null);
 
     localStorage.removeItem('active_workout_state');
     setShowCongratsModal(true);
@@ -447,12 +438,10 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                   <span style={{ width: '40px', textAlign: 'center' }}>✓</span>
                 </div>
 
-                {/* ZMIANA STRUKTURY: Pasek serii i Timer ujęte wewnątrz kontenera kolumnowego */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {ex.sets.map((set, setIdx) => (
                     <div key={setIdx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       
-                      {/* Główny pasek serii */}
                       <div 
                         style={{ 
                           display: 'flex', 
@@ -521,7 +510,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                         </div>
                       </div>
 
-                      {/* INLINE TIMER: Pojawia się bezpośrednio pod wykonaną serią */}
                       {isTimerActive && activeTimerLocation?.exIdx === exIdx && activeTimerLocation?.setIndex === setIdx && (
                         <div style={{
                           margin: '2px 0 8px 0',
@@ -714,7 +702,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
 
       {message && <p style={{ textAlign: 'center', marginTop: '15px', fontWeight: 'bold', color: '#f44336' }}>{message}</p>}
 
-      {/* MODAL Z PODSUMOWANIEM I UDOSTĘPNIANIEM */}
       {showCongratsModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.85)', zIndex: 9999, padding: '20px', boxSizing: 'border-box', overflowY: 'auto', display: 'flex' }}>
           

@@ -22,11 +22,8 @@ function GlobalRestTimer() {
   const { restTime, isTimerActive, stopTimer, addTime } = useContext(TimerContext);
   const [isMinimized, setIsMinimized] = useState(false);
   
-  // ZMIANA: Sprawdzamy, na której zakładce jesteśmy
   const location = useLocation();
 
-  // Nie renderujemy globalnego widżetu, jeśli jesteśmy na stronie głównej (tam mamy timer inline!)
-  // Oraz ukrywamy go, gdy nie jest aktywny
   if (location.pathname === '/' || (!isTimerActive && restTime <= 0)) return null;
 
   const formatTime = (seconds) => {
@@ -132,6 +129,9 @@ function App() {
 
   const [restTime, setRestTime] = useState(0);
   const [isTimerActive, setIsTimerActive] = useState(false);
+  
+  // ZMIANA: Przechowujemy lokalizację inline timera globalnie
+  const [activeTimerLocation, setActiveTimerLocation] = useState(null);
 
   useEffect(() => {
     let interval;
@@ -144,6 +144,8 @@ function App() {
         navigator.vibrate([300, 100, 300, 100, 300]);
       }
       setIsTimerActive(false);
+      // ZMIANA: Kiedy timer dojdzie do zera, czyścimy jego lokalizację
+      setActiveTimerLocation(null); 
     }
     return () => clearInterval(interval);
   }, [isTimerActive, restTime]);
@@ -156,6 +158,8 @@ function App() {
   const stopTimer = () => {
     setIsTimerActive(false);
     setRestTime(0);
+    // ZMIANA: Ręczne wyłączenie timera też ukrywa go w treningu
+    setActiveTimerLocation(null);
   };
 
   const addTime = (seconds) => {
@@ -189,7 +193,8 @@ function App() {
   };
 
   return (
-    <TimerContext.Provider value={{ restTime, isTimerActive, startTimer, stopTimer, addTime }}>
+    // ZMIANA: Eksportujemy activeTimerLocation i setActiveTimerLocation do wszystkich widoków
+    <TimerContext.Provider value={{ restTime, isTimerActive, startTimer, stopTimer, addTime, activeTimerLocation, setActiveTimerLocation }}>
       <div>
         {user ? (
           <BrowserRouter>
