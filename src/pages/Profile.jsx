@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
+// NOWOŚĆ: Import getDocsFromCache i getDocFromCache
+import { collection, query, where, getDocs, getDocsFromCache, doc, getDoc, getDocFromCache, setDoc } from 'firebase/firestore';
 import { signOut, updateProfile, onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion'; 
@@ -37,7 +38,6 @@ export default function Profile() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  // NAPRAWIONE POBIERANIE Z onAuthStateChanged
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -48,67 +48,73 @@ export default function Profile() {
       setDisplayName(user.displayName || '');
       setPhotoURL(user.photoURL || '');
 
-      try {
-        const bioDocRef = doc(db, 'users_profiles', user.uid);
-        const bioSnap = await getDoc(bioDocRef);
-        if (bioSnap.exists()) {
-          const data = bioSnap.data();
-          if (data.bio) setBio(data.bio);
+      const loadBio = async () => {
+        try {
+          const bioDocRef = doc(db, 'users_profiles', user.uid);
+          const bioSnap = navigator.onLine ? await getDoc(bioDocRef) : await getDocFromCache(bioDocRef);
+          if (bioSnap.exists()) {
+            const data = bioSnap.data();
+            if (data.bio) setBio(data.bio);
+          }
+        } catch (error) {
+          console.warn("Błąd pobierania bio profilu (Offline):", error);
         }
+      };
 
-        const q = query(
-          collection(db, 'workouts'),
-          where('userId', '==', user.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        
-        const workouts = [];
-        querySnapshot.forEach((doc) => workouts.push({ id: doc.id, ...doc.data() }));
+      const loadWorkouts = async () => {
+        try {
+          const q = query(collection(db, 'workouts'), where('userId', '==', user.uid));
+          const querySnapshot = navigator.onLine ? await getDocs(q) : await getDocsFromCache(q);
+          
+          const workouts = [];
+          querySnapshot.forEach((doc) => workouts.push({ id: doc.id, ...doc.data() }));
 
-        workouts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          workouts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-        setAllWorkouts(workouts);
+          setAllWorkouts(workouts);
 
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-        let last30DaysCount = 0;
-        
-        workouts.forEach(w => {
-          // Zabezpieczenie na wypadek działania w trybie offline (brak w pełni zainicjowanej daty)
-          if (w.createdAt && typeof w.createdAt.toDate === 'function') {
-            if (w.createdAt.toDate() >= thirtyDaysAgo) {
-              last30DaysCount++;
+          const now = new Date();
+          const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+          let last30DaysCount = 0;
+          
+          workouts.forEach(w => {
+            if (w.createdAt && typeof w.createdAt.toDate === 'function') {
+              if (w.createdAt.toDate() >= thirtyDaysAgo) {
+                last30DaysCount++;
+              }
             }
-          }
-        });
+          });
 
-        setStats({ total: workouts.length, last30Days: last30DaysCount });
+          setStats({ total: workouts.length, last30Days: last30DaysCount });
 
-        let maxBench = 0, maxSquat = 0, maxDeadlift = 0;
-        workouts.forEach(w => {
-          const checkSets = (exerciseName, sets) => {
-            sets?.forEach(set => {
-              const weightVal = Number(set.weight) || 0;
-              if (exerciseName === 'Wyciskanie sztangi poziomo' && weightVal > maxBench) maxBench = weightVal;
-              if (exerciseName === 'Przysiad ze sztangą' && weightVal > maxSquat) maxSquat = weightVal;
-              if (exerciseName === 'Martwy ciąg' && weightVal > maxDeadlift) maxDeadlift = weightVal;
-            });
-          };
+          let maxBench = 0, maxSquat = 0, maxDeadlift = 0;
+          workouts.forEach(w => {
+            const checkSets = (exerciseName, sets) => {
+              sets?.forEach(set => {
+                const weightVal = Number(set.weight) || 0;
+                if (exerciseName === 'Wyciskanie sztangi poziomo' && weightVal > maxBench) maxBench = weightVal;
+                if (exerciseName === 'Przysiad ze sztangą' && weightVal > maxSquat) maxSquat = weightVal;
+                if (exerciseName === 'Martwy ciąg' && weightVal > maxDeadlift) maxDeadlift = weightVal;
+              });
+            };
 
-          if (w.exercises) {
-            w.exercises.forEach(ex => checkSets(ex.name, ex.sets));
-          } else if (w.exerciseName) {
-            checkSets(w.exerciseName, w.sets);
-          }
-        });
+            if (w.exercises) {
+              w.exercises.forEach(ex => checkSets(ex.name, ex.sets));
+            } else if (w.exerciseName) {
+              checkSets(w.exerciseName, w.sets);
+            }
+          });
 
-        setPrs({ bench: maxBench, squat: maxSquat, deadlift: maxDeadlift });
-        setRecentWorkouts(workouts.slice(0, 3));
-        setLoading(false);
-      } catch (error) {
-        console.error("Błąd pobierania danych profilu:", error);
-        setLoading(false);
-      }
+          setPrs({ bench: maxBench, squat: maxSquat, deadlift: maxDeadlift });
+          setRecentWorkouts(workouts.slice(0, 3));
+        } catch (error) {
+          console.warn("Błąd pobierania statystyk profilu (Offline):", error);
+        }
+      };
+
+      await loadBio();
+      await loadWorkouts();
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -125,24 +131,25 @@ export default function Profile() {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      await updateProfile(user, {
-        displayName: tempUsername,
-        photoURL: tempPhotoUrl
-      });
-
-      const bioDocRef = doc(db, 'users_profiles', user.uid);
-      await setDoc(bioDocRef, { 
-        bio: tempBio,
-        username: tempUsername,
-        photoURL: tempPhotoUrl
-      }, { merge: true });
-
       setBio(tempBio);
       setDisplayName(tempUsername);
       setPhotoURL(tempPhotoUrl);
       setIsEditing(false);
+
+      updateProfile(user, {
+        displayName: tempUsername,
+        photoURL: tempPhotoUrl
+      }).catch(err => console.warn('Aktualizacja Auth odłożona (Offline)'));
+
+      const bioDocRef = doc(db, 'users_profiles', user.uid);
+      setDoc(bioDocRef, { 
+        bio: tempBio,
+        username: tempUsername,
+        photoURL: tempPhotoUrl
+      }, { merge: true }).catch(err => console.warn('Zapis bio odłożony (Offline)'));
+      
     } catch (error) {
-      alert("Błąd podczas zapisu profilu: " + error.message);
+      alert("Błąd podczas konfiguracji zapisu profilu: " + error.message);
     }
   };
 
@@ -252,12 +259,10 @@ export default function Profile() {
         )}
       </div>
 
-      {/* WIDŻET GAMIFIKACJI (STREAK) */}
       {allWorkouts.length > 0 && (
         <StreakWidget workouts={allWorkouts} />
       )}
 
-      {/* STATYSTYKI */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
         <div style={{ flex: 1, backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', padding: '15px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '1.8em', fontWeight: 'bold', color: 'var(--accent-blue)' }}>{stats.total}</div>
@@ -269,7 +274,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* REKORDY */}
       <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '15px', color: 'var(--text-primary)' }}>Rekordy (Trójbój)</h4>
       <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '15px', marginBottom: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: 'var(--text-primary)' }}>
@@ -286,7 +290,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* HISTORIA */}
       <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '15px', color: 'var(--text-primary)' }}>Ostatnie sesje</h4>
       {recentWorkouts.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Brak historii treningowej.</p>

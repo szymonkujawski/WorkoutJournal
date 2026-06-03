@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
+// NOWOŚĆ: Import getDocsFromCache
+import { collection, addDoc, getDocs, getDocsFromCache, serverTimestamp, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import html2canvas from 'html2canvas';
 
@@ -70,35 +71,53 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     }
   }, [prefilledTemplate]);
 
-  // NAPRAWIONE POBIERANIE Z onAuthStateChanged
+  // POMINIĘCIE TIMEOUTU: Natychmiastowe ładowanie dla trybu Offline
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       
-      try {
-        const dictSnap = await getDocs(collection(db, 'exercises_dict'));
+      const loadExercises = async () => {
         const exList = [];
-        dictSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
-
-        const customQ = query(collection(db, 'custom_exercises'), where('userId', '==', user.uid));
-        const customSnap = await getDocs(customQ);
-        customSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
-
-        exList.sort((a, b) => a.name.localeCompare(b.name));
-
-        setGlobalExercises(exList);
-        setCategories([...new Set(exList.map(item => item.category))]);
-
-        const q = query(collection(db, 'workouts'), where('userId', '==', user.uid));
-        const histSnap = await getDocs(q);
-        const histList = [];
-        histSnap.forEach(doc => histList.push(doc.data()));
         
-        histList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        setHistoryWorkouts(histList);
-      } catch (error) {
-        console.error("Błąd pobierania danych:", error);
-      }
+        try {
+          const dictRef = collection(db, 'exercises_dict');
+          const dictSnap = navigator.onLine ? await getDocs(dictRef) : await getDocsFromCache(dictRef);
+          dictSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+          console.warn("Błąd słownika globalnego:", error);
+        }
+
+        try {
+          const customQ = query(collection(db, 'custom_exercises'), where('userId', '==', user.uid));
+          const customSnap = navigator.onLine ? await getDocs(customQ) : await getDocsFromCache(customQ);
+          customSnap.forEach((doc) => exList.push({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+          console.warn("Błąd ćwiczeń prywatnych:", error);
+        }
+
+        if (exList.length > 0) {
+          exList.sort((a, b) => a.name.localeCompare(b.name));
+          setGlobalExercises(exList);
+          setCategories([...new Set(exList.map(item => item.category))]);
+        }
+      };
+
+      const loadHistory = async () => {
+        try {
+          const q = query(collection(db, 'workouts'), where('userId', '==', user.uid));
+          const histSnap = navigator.onLine ? await getDocs(q) : await getDocsFromCache(q);
+          const histList = [];
+          histSnap.forEach(doc => histList.push(doc.data()));
+          
+          histList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+          setHistoryWorkouts(histList);
+        } catch (error) {
+          console.warn("Błąd historii treningów:", error);
+        }
+      };
+
+      await loadExercises();
+      await loadHistory();
     });
 
     return () => unsubscribe();
@@ -212,7 +231,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     if (onWorkoutEnd) onWorkoutEnd(); 
   };
 
-  const handleSaveWorkout = async () => {
+  const handleSaveWorkout = () => {
     if (exercises.length === 0) {
       setMessage('Twój trening jest pusty! Dodaj jakieś ćwiczenia.');
       return;
@@ -255,39 +274,36 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
       }
     });
 
-    try {
-      await addDoc(collection(db, 'workouts'), {
-        userId: auth.currentUser.uid,
-        userEmail: auth.currentUser.email,
-        workoutName: workoutName || 'Pusty Trening',
-        exercises: cleanedExercises,
-        duration: elapsedTime, 
-        prCount: prCount, 
-        createdAt: serverTimestamp()
+    addDoc(collection(db, 'workouts'), {
+      userId: auth.currentUser.uid,
+      userEmail: auth.currentUser.email,
+      workoutName: workoutName || 'Pusty Trening',
+      exercises: cleanedExercises,
+      duration: elapsedTime, 
+      prCount: prCount, 
+      createdAt: serverTimestamp()
+    }).catch(error => {
+      console.error('Błąd zapisu w tle:', error);
+    });
+
+    let totalVolume = 0;
+    cleanedExercises.forEach(ex => {
+      ex.sets.forEach(set => {
+        totalVolume += (set.weight * set.reps);
       });
+    });
 
-      let totalVolume = 0;
-      cleanedExercises.forEach(ex => {
-        ex.sets.forEach(set => {
-          totalVolume += (set.weight * set.reps);
-        });
-      });
+    setWorkoutSummary({
+      duration: elapsedTime,
+      volume: totalVolume.toLocaleString('pl-PL'),
+      totalWorkouts: historyWorkouts.length + 1,
+      exerciseCount: cleanedExercises.length,
+      prCount: prCount 
+    });
 
-      setWorkoutSummary({
-        duration: elapsedTime,
-        volume: totalVolume.toLocaleString('pl-PL'),
-        totalWorkouts: historyWorkouts.length + 1,
-        exerciseCount: cleanedExercises.length,
-        prCount: prCount 
-      });
-
-      localStorage.removeItem('active_workout_state');
-      setShowCongratsModal(true);
-      setMessage('');
-
-    } catch (error) {
-      setMessage('Błąd zapisu: ' + error.message);
-    }
+    localStorage.removeItem('active_workout_state');
+    setShowCongratsModal(true);
+    setMessage('');
   };
 
   const handleCloseCongratsModal = () => {
@@ -301,15 +317,19 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
     setViewingDetails(null);
     setShowAddExerciseBox(false);
     
-    // NAPRAWIONE POBIERANIE PO ZAKOŃCZENIU
+    // Szybkie odświeżenie historii po zapisie (z obsługą Offline)
     const fetchData = async () => {
       if (!auth.currentUser) return;
       const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
-      const histSnap = await getDocs(q);
-      const histList = [];
-      histSnap.forEach(doc => histList.push(doc.data()));
-      histList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setHistoryWorkouts(histList);
+      try {
+        const histSnap = navigator.onLine ? await getDocs(q) : await getDocsFromCache(q);
+        const histList = [];
+        histSnap.forEach(doc => histList.push(doc.data()));
+        histList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        setHistoryWorkouts(histList);
+      } catch (e) {
+        console.warn("Zaktualizowanie historii opóźnione (Offline)");
+      }
     };
     fetchData();
 
@@ -659,7 +679,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
           
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '350px', margin: 'auto' }}>
             
-            {/* Element docelowy z podsumowaniem (Tego robimy zdjęcie) */}
             <div 
               ref={summaryRef}
               style={{ backgroundColor: 'var(--bg-surface)', padding: '35px 25px', borderRadius: '16px', border: '2px solid var(--accent-green)', width: '100%', textAlign: 'center', boxShadow: '0 10px 30px rgba(76, 175, 80, 0.2)', marginBottom: '15px', boxSizing: 'border-box' }}
@@ -699,7 +718,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
               </div>
             </div>
 
-            {/* Przyciski poza ekranem zdjęcia */}
             <div style={{ display: 'flex', gap: '10px', width: '100%', boxSizing: 'border-box' }}>
               <button 
                 onClick={handleShareWorkout} 
@@ -724,7 +742,6 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
         </div>
       )}
 
-      {/* MODAL POTWIERDZENIA ANULOWANIA */}
       {showCancelModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: 'var(--bg-surface)', padding: '30px 25px', borderRadius: '16px', border: '2px solid #f44336', maxWidth: '350px', width: '90%', textAlign: 'center', boxShadow: '0 10px 30px rgba(244, 67, 54, 0.2)' }}>

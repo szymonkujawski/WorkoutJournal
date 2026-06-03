@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+// NOWOŚĆ: Dodany import getDocsFromCache
+import { collection, query, where, getDocs, getDocsFromCache } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 
 export default function Exercises() {
   const [workouts, setWorkouts] = useState([]);
   
-  // ZMIANA: Zamiast "performedExercises" trzymamy wszystkie ćwiczenia z bazy
   const [allExercises, setAllExercises] = useState([]); 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [fullExerciseDict, setFullExerciseDict] = useState({}); 
@@ -20,18 +21,20 @@ export default function Exercises() {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // POMINIĘCIE TIMEOUTU: Dynamiczne przełączanie Sieć / Cache
   useEffect(() => {
-    const fetchData = async () => {
-      if (!auth.currentUser) return;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-      try {
-        // 1. Pobieramy wszystkie ćwiczenia z bazy
-        const dictSnap = await getDocs(collection(db, 'exercises_dict'));
+      const loadExercises = async () => {
         const dictMap = {};
         const exercisesList = [];
         const cats = new Set();
 
-        dictSnap.forEach(doc => {
+        const processExerciseDoc = (doc) => {
           const data = doc.data();
           const exObj = {
             name: data.name,
@@ -41,10 +44,26 @@ export default function Exercises() {
           };
           dictMap[data.name] = exObj;
           exercisesList.push(exObj);
-          cats.add(data.category); // Zbieramy wszystkie unikalne kategorie z bazy
-        });
+          cats.add(data.category);
+        };
 
-        // Sortujemy ćwiczenia i kategorie alfabetycznie
+        try {
+          const dictRef = collection(db, 'exercises_dict');
+          // W trybie offline natychmiastowo czytamy z Cache
+          const dictSnap = navigator.onLine ? await getDocs(dictRef) : await getDocsFromCache(dictRef);
+          dictSnap.forEach(processExerciseDoc);
+        } catch (error) {
+          console.warn("Błąd słownika globalnego (Offline):", error);
+        }
+
+        try {
+          const customQ = query(collection(db, 'custom_exercises'), where('userId', '==', user.uid));
+          const customSnap = navigator.onLine ? await getDocs(customQ) : await getDocsFromCache(customQ);
+          customSnap.forEach(processExerciseDoc);
+        } catch (error) {
+          console.warn("Błąd słownika prywatnego (Offline):", error);
+        }
+
         exercisesList.sort((a, b) => a.name.localeCompare(b.name));
         const sortedCategories = Array.from(cats).sort();
 
@@ -55,35 +74,38 @@ export default function Exercises() {
         if (sortedCategories.length > 0) {
           setSelectedCategory(sortedCategories[0]);
         }
+      };
 
-        // 2. Pobieramy historię treningów użytkownika (tylko na potrzeby wykresów)
-        const q = query(collection(db, 'workouts'), where('userId', '==', auth.currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        const fetchedWorkouts = [];
-        
-        querySnapshot.forEach((doc) => {
-          fetchedWorkouts.push({ id: doc.id, ...doc.data() });
-        });
+      const loadWorkouts = async () => {
+        try {
+          const q = query(collection(db, 'workouts'), where('userId', '==', user.uid));
+          const querySnapshot = navigator.onLine ? await getDocs(q) : await getDocsFromCache(q);
+          const fetchedWorkouts = [];
+          
+          querySnapshot.forEach((doc) => {
+            fetchedWorkouts.push({ id: doc.id, ...doc.data() });
+          });
 
-        fetchedWorkouts.sort((a, b) => {
-          const dateA = a.createdAt?.seconds || 0;
-          const dateB = b.createdAt?.seconds || 0;
-          return dateA - dateB;
-        });
+          fetchedWorkouts.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateA - dateB;
+          });
 
-        setWorkouts(fetchedWorkouts);
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Błąd pobierania danych do wykresów:", error);
-        setLoading(false);
-      }
-    };
+          setWorkouts(fetchedWorkouts);
+        } catch (error) {
+          console.warn("Błąd pobierania historii treningów (Offline):", error);
+        }
+      };
 
-    fetchData();
+      await loadExercises();
+      await loadWorkouts();
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Aktualizacja wybranego ćwiczenia przy zmianie kategorii
   useEffect(() => {
     if (selectedCategory) {
       const exercisesInCategory = allExercises.filter(e => e.category === selectedCategory);
@@ -95,7 +117,6 @@ export default function Exercises() {
     }
   }, [selectedCategory, allExercises]);
 
-  // Generowanie danych do wykresu dla wybranego ćwiczenia
   useEffect(() => {
     if (!selectedExercise) {
       setChartData([]);
@@ -105,7 +126,7 @@ export default function Exercises() {
     const dataMap = {};
 
     workouts.forEach(workout => {
-      if (!workout.createdAt) return;
+      if (!workout.createdAt || typeof workout.createdAt.toDate !== 'function') return;
       
       const dateStr = workout.createdAt.toDate().toLocaleDateString('pl-PL', { day: '2-digit', month: 'short' });
       let maxWeightInSession = 0;
@@ -145,7 +166,6 @@ export default function Exercises() {
 
   if (loading) return <p style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-secondary)' }}>Ładowanie bazy ćwiczeń...</p>;
 
-  // --- WIDOK 2: SZCZEGÓŁY ĆWICZENIA (Encyklopedia) ---
   if (viewingDetails) {
     return (
       <motion.div 
@@ -224,7 +244,6 @@ export default function Exercises() {
     );
   }
 
-  // --- WIDOK 1: STANDARDOWY PANEL (Kafelki + Wykres) ---
   const exercisesToDisplay = allExercises.filter(ex => ex.category === selectedCategory);
 
   return (
@@ -340,7 +359,6 @@ export default function Exercises() {
         <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center' }}>Brak ćwiczeń w bazie danych.</p>
       )}
 
-      {/* Sekcja Wykresu */}
       {selectedExercise && chartData.length > 0 ? (
         <div style={{ backgroundColor: 'var(--bg-surface)', padding: '20px 10px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           <h4 style={{ textAlign: 'center', margin: '0 0 20px 0', color: 'var(--text-primary)' }}>

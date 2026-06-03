@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
 import Calendar from 'react-calendar';
@@ -16,50 +17,62 @@ export default function WorkoutHistory() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
 
-  // NOWOŚĆ: Stany dla modala usuwania
+  // Stany dla modala usuwania
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [workoutToDelete, setWorkoutToDelete] = useState(null);
 
+  // NAPRAWIONE: onAuthStateChanged chroniące przed błędami w trybie Offline
   useEffect(() => {
-    if (!auth.currentUser) return;
+    let unsubscribeSnapshot = null;
 
-    const q = query(
-      collection(db, 'workouts'),
-      where('userId', '==', auth.currentUser.uid)
-    );
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const workoutsArray = [];
-      const datesSet = new Set();
+      const q = query(
+        collection(db, 'workouts'),
+        where('userId', '==', user.uid)
+      );
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        workoutsArray.push({ id: doc.id, ...data });
+      unsubscribeSnapshot = onSnapshot(q, (querySnapshot) => {
+        const workoutsArray = [];
+        const datesSet = new Set();
 
-        // Dodawanie dat do kalendarza
-        if (data.createdAt) {
-          const d = data.createdAt.toDate();
-          const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          datesSet.add(dateString);
-        }
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          workoutsArray.push({ id: doc.id, ...data });
+
+          // Zabezpieczenie PWA: Czasami w trybie offline data serwera jest jeszcze nieznana
+          if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            const d = data.createdAt.toDate();
+            const dateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            datesSet.add(dateString);
+          }
+        });
+
+        // Sortowanie chronologiczne od najnowszych
+        workoutsArray.sort((a, b) => {
+          const dateA = a.createdAt?.seconds || 0;
+          const dateB = b.createdAt?.seconds || 0;
+          return dateB - dateA;
+        });
+
+        setWorkouts(workoutsArray);
+        setWorkoutDates(datesSet);
+        setLoading(false);
+      }, (error) => {
+        console.error("Błąd podczas pobierania historii:", error);
+        setLoading(false);
       });
-
-      // Sortowanie chronologiczne od najnowszych
-      workoutsArray.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
-        return dateB - dateA;
-      });
-
-      setWorkouts(workoutsArray);
-      setWorkoutDates(datesSet);
-      setLoading(false);
-    }, (error) => {
-      console.error("Błąd podczas pobierania historii:", error);
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Sprzątanie po odmontowaniu komponentu
+    return () => {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      unsubscribeAuth();
+    };
   }, []);
 
   const formatDuration = (totalSeconds) => {
@@ -86,7 +99,7 @@ export default function WorkoutHistory() {
     return totalVolume.toLocaleString('pl-PL');
   };
 
-  // ZMIANA: Zamiast window.confirm, odpalamy modal
+  // Zamiast window.confirm, odpalamy modal
   const handleDeleteClick = (e, workoutId) => {
     e.preventDefault();
     e.stopPropagation(); // Blokuje otwarcie szczegółów sesji podczas klikania w przycisk
@@ -94,7 +107,7 @@ export default function WorkoutHistory() {
     setShowDeleteModal(true);
   };
 
-  // NOWOŚĆ: Funkcja do faktycznego skasowania po potwierdzeniu
+  // Funkcja do faktycznego skasowania po potwierdzeniu
   const confirmDelete = async () => {
     if (!workoutToDelete) return;
     try {
@@ -106,7 +119,7 @@ export default function WorkoutHistory() {
     }
   };
 
-  // NOWOŚĆ: Anulowanie kasowania
+  // Anulowanie kasowania
   const cancelDelete = (e) => {
     if (e) {
       e.preventDefault();
@@ -132,7 +145,7 @@ export default function WorkoutHistory() {
 
     if (workoutDates.has(clickedDate)) {
       const targetWorkout = workouts.find(w => {
-        if (!w.createdAt) return false;
+        if (!w.createdAt || typeof w.createdAt.toDate !== 'function') return false;
         const d = w.createdAt.toDate();
         const wDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         return wDate === clickedDate;
@@ -267,7 +280,7 @@ export default function WorkoutHistory() {
           onMouseEnter={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)' }}
           onMouseLeave={(e) => { if(highlightedId !== workout.id) e.currentTarget.style.backgroundColor = 'var(--bg-surface)' }}
         >  
-          {/* Przycisk Usuń - teraz wywołuje handleDeleteClick */}
+          {/* Przycisk Usuń */}
           <button 
             onClick={(e) => handleDeleteClick(e, workout.id)}
             style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'transparent', border: 'none', color: 'rgba(244, 67, 54, 0.6)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85em', transition: 'color 0.2s' }}
@@ -283,7 +296,7 @@ export default function WorkoutHistory() {
               {workout.workoutName || 'Trening'}
             </strong>
             <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)', alignSelf: 'center' }}>
-              {workout.createdAt?.toDate() ? workout.createdAt.toDate().toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Niedawno'}
+              {workout.createdAt?.toDate && typeof workout.createdAt.toDate === 'function' ? workout.createdAt.toDate().toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Niedawno'}
             </span>
           </div>
           
@@ -292,13 +305,12 @@ export default function WorkoutHistory() {
             <span>Czas: <strong style={{ color: 'var(--text-primary)' }}>{formatDuration(workout.duration)}</strong></span>
             <span>Objętość: <strong style={{ color: 'var(--text-primary)' }}>{calculateTotalVolume(workout)} kg</strong></span>
             
-            {/* Wyświetlanie PR z ujednoliconym stylem */}
             {workout.prCount && workout.prCount > 0 ? (
               <span>Rekordy: <strong style={{ color: 'var(--text-primary)' }}>{workout.prCount}</strong></span>
             ) : null}
           </div>
           
-          {/* Rozpiska Ćwiczeń oraz dokładnych serii/kilogramów */}
+          {/* Rozpiska Ćwiczeń */}
           {workout.exercises && workout.exercises.length > 0 ? (
             workout.exercises.map((ex, exIdx) => (
               <div key={exIdx} style={{ marginBottom: '12px', paddingLeft: '2px' }}>

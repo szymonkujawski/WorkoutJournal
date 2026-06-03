@@ -1,9 +1,10 @@
 import UserProfile from './pages/UserProfile';
 import { useState, useEffect } from 'react';
-import { auth } from './firebase'; 
+import { db, auth } from './firebase'; // Upewnij się, że db jest zaimportowane
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'; // Importy do Cache Warmingu
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion'; // Import Framer Motion
+import { AnimatePresence } from 'framer-motion'; 
 
 import WorkoutDetails from './pages/WorkoutDetails';
 // Komponenty logowania
@@ -18,7 +19,7 @@ import Exercises from './pages/Exercises';
 import Friends from './pages/Friends';
 import Profile from './pages/Profile';
 
-// NOWOŚĆ: Wewnętrzny komponent nawigacji, pozwalający na użycie useLocation()
+// Wewnętrzny komponent nawigacji, pozwalający na użycie useLocation()
 function AnimatedMain() {
   const location = useLocation();
 
@@ -64,7 +65,29 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+
+      // NOWOŚĆ: Pre-fetching (Cache Warming) dla trybu Offline
+      if (currentUser) {
+        try {
+          // Pobieramy kluczowe dane w tle (bez blokującego 'await') i bez obsługi UI
+          // Jeśli urządzenie już jest offline, catch przechwyci błąd i nie zepsuje działania apki
+          getDocs(collection(db, 'exercises_dict')).catch(e => console.warn('Cache dict:', e));
+          
+          getDocs(query(collection(db, 'custom_exercises'), where('userId', '==', currentUser.uid)))
+            .catch(e => console.warn('Cache custom ex:', e));
+            
+          getDocs(query(collection(db, 'workouts'), where('userId', '==', currentUser.uid)))
+            .catch(e => console.warn('Cache workouts:', e));
+            
+          getDoc(doc(db, 'users_profiles', currentUser.uid))
+            .catch(e => console.warn('Cache profile:', e));
+            
+        } catch (error) {
+          console.warn("Wystąpił problem podczas pre-fetchingu danych:", error);
+        }
+      }
     });
+    
     return () => unsubscribe();
   }, []);
 
