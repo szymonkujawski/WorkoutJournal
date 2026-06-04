@@ -90,19 +90,53 @@ function GlobalRestTimer() {
 
 function AnimatedMain() {
   const location = useLocation();
+  
+  // NOWOŚĆ: Stan śledzący czy strona została przewinięta
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // NOWOŚĆ: Nasłuchiwanie przewijania okna przeglądarki
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <>
+      {/* ZMIANA: Dynamiczny padding oraz płynne przejście transition */}
       <header style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        boxSizing: 'border-box',
+        zIndex: 900,
         textAlign: 'center', 
-        padding: '15px 20px', 
+        padding: isScrolled ? '10px 20px' : '18px 20px', 
         borderBottom: '1px solid var(--border-color)', 
-        backgroundColor: 'var(--bg-surface)' 
+        backgroundColor: 'var(--bg-surface)',
+        transition: 'all 0.3s ease'
       }}>
-        <h1 style={{ fontSize: '1.4em', margin: 0, color: 'var(--accent-blue)' }}>WorkoutJournal</h1>
+        {/* ZMIANA: Dynamiczny rozmiar czcionki i płynne przejście transition */}
+        <h1 style={{ 
+          fontSize: isScrolled ? '1.2em' : '1.4em', 
+          margin: 0, 
+          color: 'var(--accent-blue)',
+          transition: 'all 0.3s ease'
+        }}>
+          WorkoutJournal
+        </h1>
       </header>
       
-      <main style={{ padding: '20px', paddingBottom: '80px', overflowX: 'hidden' }}>
+      {/* Zachowujemy padding-top na poziomie 80px, co idealnie współgra z domyślnym rozmiarem nagłówka */}
+      <main style={{ padding: '20px', paddingTop: '80px', paddingBottom: '80px', overflowX: 'hidden', boxSizing: 'border-box' }}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Home />} />
@@ -129,8 +163,6 @@ function App() {
 
   const [restTime, setRestTime] = useState(0);
   const [isTimerActive, setIsTimerActive] = useState(false);
-  
-  // ZMIANA: Przechowujemy lokalizację inline timera globalnie
   const [activeTimerLocation, setActiveTimerLocation] = useState(null);
 
   useEffect(() => {
@@ -144,7 +176,6 @@ function App() {
         navigator.vibrate([300, 100, 300, 100, 300]);
       }
       setIsTimerActive(false);
-      // ZMIANA: Kiedy timer dojdzie do zera, czyścimy jego lokalizację
       setActiveTimerLocation(null); 
     }
     return () => clearInterval(interval);
@@ -158,7 +189,6 @@ function App() {
   const stopTimer = () => {
     setIsTimerActive(false);
     setRestTime(0);
-    // ZMIANA: Ręczne wyłączenie timera też ukrywa go w treningu
     setActiveTimerLocation(null);
   };
 
@@ -193,7 +223,6 @@ function App() {
   };
 
   return (
-    // ZMIANA: Eksportujemy activeTimerLocation i setActiveTimerLocation do wszystkich widoków
     <TimerContext.Provider value={{ restTime, isTimerActive, startTimer, stopTimer, addTime, activeTimerLocation, setActiveTimerLocation }}>
       <div>
         {user ? (
