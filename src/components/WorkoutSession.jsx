@@ -515,7 +515,7 @@ export default function WorkoutSession({ prefilledTemplate, onWorkoutEnd }) {
                           margin: '2px 0 8px 0',
                           padding: '12px',
                           backgroundColor: 'rgba(100, 181, 246, 0.05)',
-                          border: '1px dashed var(--accent-blue)',
+                          border: '1px solid var(--accent-blue)',
                           borderRadius: '8px',
                           display: 'flex',
                           flexDirection: 'column',

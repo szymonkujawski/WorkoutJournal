@@ -147,7 +147,7 @@ export default function StreakWidget({ workouts = [] }) {
               height: '32px',
               borderRadius: '50%',
               backgroundColor: day.hasWorkout ? 'var(--accent-blue)' : (day.isToday ? 'rgba(255,255,255,0.05)' : 'transparent'),
-              border: day.hasWorkout ? 'none' : (day.isToday ? '2px dashed var(--border-color)' : '2px solid var(--border-color)'),
+              border: day.hasWorkout ? 'none' : (day.isToday ? '2px solid var(--border-color)' : '2px solid var(--border-color)'),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
